@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Audit log</h1><p>Read-only record of important changes. Entries cannot be edited or deleted.</p></div>
+  <a class="btn btn-outline-primary" href="{% querystring export='csv' page=None %}"><i class="bi bi-download me-1"></i>Export CSV</a></div>
+<div class="card">
+  <div class="card-body border-bottom">
+    <form class="tf-filterbar" method="get" data-no-spinner>
+      <div><label class="form-label small" for="q">Record or message</label><input class="form-control" id="q" name="q" value="{{ request.GET.q }}"></div>
+      <div><label class="form-label small" for="user">User</label><select class="form-select" id="user" name="user"><option value="">All users</option>
+        {% for u in users %}<option value="{{ u.pk }}" {% if request.GET.user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select></div>
+      <div><label class="form-label small" for="action">Action</label><select class="form-select" id="action" name="action"><option value="">All actions</option>
+        {% for key, label in actions %}<option value="{{ key }}" {% if request.GET.action == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div><label class="form-label small" for="date_from">From</label><input class="form-control" type="date" id="date_from" name="date_from" value="{{ request.GET.date_from }}"></div>
+      <div><label class="form-label small" for="date_to">To</label><input class="form-control" type="date" id="date_to" name="date_to" value="{{ request.GET.date_to }}"></div>
+      <div><button class="btn btn-outline-primary" type="submit">Apply</button> <a class="btn btn-link" href="{% url 'core:audit_log' %}">Clear</a></div>
+    </form>
+  </div>
+  {% if page.object_list %}
+  <div class="table-responsive"><table class="table table-hover align-top">
+    <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Record</th><th>Changes</th><th>IP</th></tr></thead>
+    <tbody>{% for e in page %}<tr>
+      <td class="text-nowrap small">{{ e.timestamp|date:"d-M-Y H:i:s" }}</td>
+      <td class="small">{% if e.user %}{{ e.user.get_full_name|default:e.user.username }}{% else %}System{% endif %}</td>
+      <td><span class="badge-status {% if e.action == 'login_failed' or e.action == 'delete' or e.action == 'deactivate' %}badge-danger{% elif e.action == 'permission' or e.action == 'password_reset' %}badge-warning{% else %}badge-inactive{% endif %}">{{ e.get_action_display }}</span></td>
+      <td class="small">{% if e.content_type %}<span class="text-secondary">{{ e.content_type.name|capfirst }}</span><br>{% endif %}{{ e.object_repr }}{% if e.message %}<div class="text-secondary">{{ e.message }}</div>{% endif %}</td>
+      <td class="small" style="max-width:380px">{% for field, pair in e.changes.items %}<div><span class="text-secondary">{{ field }}:</span> {{ pair.0|default_if_none:"—" }} <i class="bi bi-arrow-right-short"></i> {{ pair.1|default_if_none:"—" }}</div>{% empty %}—{% endfor %}</td>
+      <td class="small text-nowrap">{{ e.ip_address|default:"—" }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+  {% else %}<div class="tf-empty"><i class="bi bi-journal-text"></i>No audit entries match these filters.</div>{% endif %}
+</div>
+{% endblock %}

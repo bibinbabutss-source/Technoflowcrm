@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Two-step sign-in{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Two-step sign-in</h1><p>Protect your account with a code from an authenticator app (Microsoft Authenticator, Google Authenticator, Authy…).</p></div>
+  <a class="btn btn-outline-secondary" href="{% url 'accounts:my_profile' %}">Back to profile</a></div>
+<div class="row g-3"><div class="col-lg-7">
+{% if profile.mfa_enabled %}
+  <div class="card"><div class="card-header">Status: <span class="badge-status badge-success">On</span></div><div class="card-body">
+    <p>Each sign-in asks for your password and then a 6-digit code from your app.</p>
+    <h2 class="h6 mt-3">Turn off</h2>
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="disable">
+      <div class="row g-2"><div class="col-md-6"><label class="form-label" for="pw">Your password</label><input class="form-control" type="password" id="pw" name="password" autocomplete="current-password" required></div>
+      <div class="col-md-6"><label class="form-label" for="code">Current code</label><input class="form-control" id="code" name="code" inputmode="numeric" maxlength="7" required></div></div>
+      <button class="btn btn-outline-danger mt-3" type="submit">Turn off two-step sign-in</button></form>
+  </div></div>
+{% else %}
+  <div class="card"><div class="card-header">Status: <span class="badge-status badge-neutral">Off</span></div><div class="card-body">
+    <ol class="ps-3">
+      <li class="mb-2">Scan this QR code with your authenticator app.<br>
+        <img src="{{ qr }}" alt="QR code for the authenticator app" width="220" height="220" class="border rounded mt-2"></li>
+      <li class="mb-2">Can't scan? Enter this key manually: <code class="user-select-all">{{ secret }}</code></li>
+      <li>Enter the 6-digit code the app shows:</li>
+    </ol>
+    <form method="post" novalidate class="d-flex gap-2 flex-wrap">{% csrf_token %}
+      <input class="form-control" style="max-width:180px" name="code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" aria-label="Code" required>
+      <button class="btn btn-primary" type="submit">Turn on</button></form>
+    <a class="small d-inline-block mt-3" href="?new=1">Generate a different key</a>
+  </div></div>
+{% endif %}
+</div></div>
+{% endblock %}

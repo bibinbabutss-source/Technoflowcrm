@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Login history{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'accounts:user_list' %}">User management</a></li><li class="breadcrumb-item active">Login history</li></ol></nav>
+<div class="tf-page-head"><div><h1>Login history</h1><p>Every sign-in, sign-out and failed attempt.</p></div></div>
+<div class="card">
+  <div class="card-body border-bottom">
+    <form class="tf-filterbar" method="get" data-no-spinner>
+      <div><label class="form-label small" for="q">Username</label><input class="form-control" id="q" name="q" value="{{ request.GET.q }}"></div>
+      <div><label class="form-label small" for="event">Event</label>
+        <select class="form-select" id="event" name="event"><option value="">All</option>
+          <option value="login" {% if request.GET.event == "login" %}selected{% endif %}>Login</option>
+          <option value="logout" {% if request.GET.event == "logout" %}selected{% endif %}>Logout</option>
+          <option value="failed" {% if request.GET.event == "failed" %}selected{% endif %}>Failed</option></select></div>
+      <div><button class="btn btn-outline-primary" type="submit">Apply</button> <a class="btn btn-link" href="{% url 'accounts:login_history' %}">Clear</a></div>
+    </form>
+  </div>
+  {% if page.object_list %}
+  <div class="table-responsive"><table class="table table-hover">
+    <thead><tr><th>Time</th><th>Username</th><th>Employee</th><th>Event</th><th>IP address</th><th>Browser</th></tr></thead>
+    <tbody>{% for l in page %}<tr>
+      <td class="text-nowrap">{{ l.timestamp|date:"d-M-Y H:i:s" }}</td><td>{{ l.username }}</td>
+      <td>{% if l.user.profile %}<a href="{% url 'accounts:user_detail' l.user.profile.pk %}">{{ l.user.get_full_name }}</a>{% else %}<span class="text-secondary">Unknown user</span>{% endif %}</td>
+      <td>{% if l.event == "failed" %}<span class="badge-status badge-danger">Failed</span>{% else %}{{ l.get_event_display }}{% endif %}</td>
+      <td>{{ l.ip_address|default:"—" }}</td><td class="small text-secondary text-truncate" style="max-width:260px">{{ l.user_agent }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+  {% else %}<div class="tf-empty"><i class="bi bi-clock-history"></i>No entries match these filters.</div>{% endif %}
+</div>
+{% endblock %}

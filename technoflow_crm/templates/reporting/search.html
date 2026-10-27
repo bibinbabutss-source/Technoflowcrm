@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Search</h1><p>{% if q %}{{ total }} result{{ total|pluralize }} for “{{ q }}” in the records you are allowed to see.{% else %}Type at least 2 characters.{% endif %}</p></div></div>
+<form method="get" class="mb-3" role="search" data-no-spinner><div class="input-group" style="max-width:560px"><input class="form-control" name="q" value="{{ q }}" placeholder="Customer, lead, quotation number, invoice…" aria-label="Search" autofocus><button class="btn btn-primary" type="submit">Search</button></div></form>
+{% for g in groups %}<div class="card mb-3"><div class="card-header">{{ g.label }}</div><ul class="list-group list-group-flush">
+  {% for title, sub, url in g.results %}<li class="list-group-item"><a class="fw-semibold" href="{{ url }}">{{ title }}</a><div class="small text-secondary">{{ sub }}</div></li>{% endfor %}</ul></div>
+{% empty %}{% if q|length >= 2 %}<div class="card"><div class="tf-empty"><i class="bi bi-search"></i>Nothing found.</div></div>{% endif %}{% endfor %}
+{% endblock %}

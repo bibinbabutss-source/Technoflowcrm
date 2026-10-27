@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block content %}
+<div class="tf-empty card"><i class="bi bi-question-circle"></i><h1 class="h2">Page not found</h1>
+<p>The page or record does not exist, or it has moved.</p>
+<a class="btn btn-outline-primary" href="{% url 'core:dashboard' %}">Back to dashboard</a></div>
+{% endblock %}

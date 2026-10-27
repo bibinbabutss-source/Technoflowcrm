@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Import {{ batch.file_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'reporting:import_start' %}">Import</a></li><li class="breadcrumb-item active">{{ batch.file_name }}</li></ol></nav>
+<div class="tf-page-head"><div><h1>{{ batch.get_kind_display }} import</h1><p>{{ batch.file_name }} · {{ batch.rows|length }} rows · {{ batch.get_status_display }}</p></div>
+  {% if batch.status != "imported" and batch.status != "cancelled" %}<form method="post" action="{% url 'reporting:import_cancel' batch.pk %}" data-confirm="Cancel this import and discard the uploaded rows?">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">Cancel import</button></form>{% endif %}</div>
+{% if batch.status == "mapping" or batch.status == "preview" %}
+<form method="post" class="card mb-3">{% csrf_token %}<div class="card-header">1. Match the columns of your file to CRM fields</div>
+  <div class="table-responsive"><table class="table table-sm"><thead><tr><th>CRM field</th><th>Column in your file</th><th>Example values</th></tr></thead>
+  <tbody>{% for fname, label, required, current in fields %}<tr><td>{{ label }}{% if required %}<span class="required-mark">*</span>{% endif %}</td>
+    <td><select class="form-select form-select-sm" name="map_{{ fname }}" aria-label="Column for {{ label }}"><option value="">— not imported —</option>{% for i, h in headers %}<option value="{{ i }}" {% if current == i %}selected{% endif %}>{{ h }}</option>{% endfor %}</select></td>
+    <td class="small text-secondary">{% if current is not None %}{% for row in sample %}{% for c in row %}{% if forloop.counter0 == current %}{{ c|truncatechars:30 }}{% endif %}{% endfor %}{% if not forloop.last %} · {% endif %}{% endfor %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  <div class="card-body border-top"><button class="btn btn-primary" type="submit">Check and preview</button> <span class="small text-secondary ms-2">Nothing is saved until you click Import.</span></div></form>
+{% endif %}
+{% if batch.summary %}
+<div class="row g-3 mb-3" id="preview">
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Rows</div><div class="value">{{ batch.summary.total }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Ready to import</div><div class="value text-success">{{ batch.summary.ok }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Duplicates (skipped)</div><div class="value">{{ batch.summary.duplicates }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Errors (skipped)</div><div class="value text-danger">{{ batch.summary.errors }}</div></div></div>
+</div>
+{% if batch.status == "imported" %}<div class="alert alert-success">{{ batch.summary.created }} record{{ batch.summary.created|pluralize }} created. {% if batch.summary.duplicates or batch.summary.errors %}<a href="{% url 'reporting:import_errors' batch.pk %}">Download the skipped rows</a> to correct them.{% endif %}</div>
+{% elif batch.status == "preview" %}<div class="d-flex gap-2 mb-3 align-items-center">
+  <form method="post" action="{% url 'reporting:import_run' batch.pk %}" data-confirm="Import {{ batch.summary.ok }} new {{ batch.get_kind_display|lower }}? Duplicates and rows with errors are skipped.">{% csrf_token %}<button class="btn btn-primary" type="submit" {% if not batch.summary.ok %}disabled{% endif %}>Import {{ batch.summary.ok }} rows</button></form>
+  {% if batch.summary.duplicates or batch.summary.errors %}<a class="btn btn-outline-secondary" href="{% url 'reporting:import_errors' batch.pk %}">Download problem rows (CSV)</a>{% endif %}</div>{% endif %}
+<div class="card"><div class="card-header">2. Preview {% if batch.rows|length > 300 %}(first 300 rows){% endif %}</div><div class="table-responsive"><table class="table table-sm">
+  <thead><tr><th>Row</th><th>Result</th>{% for label in field_labels %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for p in preview_rows %}<tr class="{% if p.res.status == 'error' %}table-danger{% elif p.res.status == 'duplicate' %}table-warning{% endif %}"><td>{{ p.res.row }}</td>
+    <td class="small">{% if p.res.status == "ok" %}<span class="badge-status badge-active">OK</span>{% elif p.res.status == "duplicate" %}<span class="badge-status badge-warning">Duplicate</span>{% else %}<span class="badge-status badge-danger">Error</span>{% endif %}{% for m in p.res.messages %}<div>{{ m }}</div>{% endfor %}</td>
+    {% for c in p.cells %}<td class="small">{{ c|truncatechars:40 }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,1 @@
+{% if duplicates %}<ul class="mb-0">{% for d in duplicates %}<li><a href="{{ d.customer.get_absolute_url }}">{{ d.customer }}</a> — {{ d.reasons|join:", " }}</li>{% endfor %}</ul>{% else %}No similar customers found.{% endif %}

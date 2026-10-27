@@ -1,0 +1,10 @@
+# sudo systemctl enable --now technoflow-backup.timer   (runs deploy/backup.sh nightly)
+[Unit]
+Description=Nightly Technoflow CRM backup
+
+[Timer]
+OnCalendar=*-*-* 01:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

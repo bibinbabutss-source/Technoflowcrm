@@ -1,0 +1,12 @@
+# Keep Linux line endings in scripts that Render runs.
+# Windows line endings make bash fail with "$'\r': command not found".
+*.sh   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.py   text eol=lf
+
+# Binary files: never change them
+*.png  binary
+*.jpg  binary
+*.woff binary
+*.woff2 binary

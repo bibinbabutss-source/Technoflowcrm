@@ -1,0 +1,1 @@
+{% load crm %}{% if v is None %}—{% elif unit == "amount" %}{{ v|money }}{% elif unit == "percent" %}{{ v|pct }}{% else %}{{ v|floatformat:0 }}{% endif %}

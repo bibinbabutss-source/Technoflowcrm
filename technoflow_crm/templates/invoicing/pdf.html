@@ -1,0 +1,29 @@
+{% extends "pdf/base.html" %}{% load crm %}
+{% block title %}Tax invoice {{ inv.number }}{% endblock %}
+{% block content %}
+{% if draft %}<div class="draft">DRAFT — NOT A VALID TAX INVOICE</div>{% endif %}
+<table><tr>
+  <td style="width:55%;vertical-align:top"><h1>TAX INVOICE</h1><div class="muted">No. <b style="color:#23262A">{{ inv.number|default:"(draft)" }}</b></div></td>
+  <td style="vertical-align:top"><table>
+    <tr><td class="muted">Invoice date</td><td class="r">{{ inv.invoice_date|date:"d-M-Y" }}</td></tr>
+    <tr><td class="muted">Due date</td><td class="r">{{ inv.due_date|date:"d-M-Y" }}</td></tr>
+    <tr><td class="muted">Order</td><td class="r">{{ inv.order.number }}</td></tr>
+    {% if inv.reference %}<tr><td class="muted">Your reference</td><td class="r">{{ inv.reference }}</td></tr>{% endif %}
+    <tr><td class="muted">Currency</td><td class="r">{{ inv.currency }}</td></tr>
+  </table></td></tr></table>
+<div class="box" style="margin-top:8pt"><b>Bill to: {{ inv.customer.company_name }}</b><br>
+  {% if inv.customer.billing_address %}{{ inv.customer.billing_address|linebreaksbr }}<br>{% endif %}{{ inv.customer.city }}{% if inv.customer.country %}, {{ inv.customer.country }}{% endif %}
+  {% if inv.customer.trn %}<br>Customer TRN {{ inv.customer.trn }}{% endif %}</div>
+<table class="lines"><thead><tr><th style="width:5%">#</th><th style="width:50%">Description</th><th class="r" style="width:8%">Qty</th><th class="r" style="width:13%">Unit price</th><th class="r" style="width:8%">VAT</th><th class="r" style="width:16%">Amount</th></tr></thead>
+  <tbody>{% for ln in lines %}<tr><td>{{ forloop.counter }}</td><td>{{ ln.description|linebreaksbr }}</td><td class="r">{{ ln.quantity.normalize }}</td><td class="r">{{ ln.unit_price|money }}</td><td class="r">{{ ln.tax_rate_value.normalize }}%</td><td class="r">{{ ln.line_net|money }}</td></tr>{% endfor %}</tbody></table>
+<table class="totals" style="margin-top:6pt"><tr><td style="width:55%"></td><td><table>
+  <tr><td>Amount excl. VAT</td><td class="r">{{ inv.subtotal|money }}</td></tr>
+  {% for rate, t in tax_breakdown.items %}<tr><td>VAT {{ rate.normalize }}%</td><td class="r">{{ t.tax|money }}</td></tr>{% endfor %}
+  <tr><td>VAT total</td><td class="r">{{ inv.tax_amount|money }}</td></tr>
+  <tr class="grand"><td>Total {{ inv.currency }}</td><td class="r">{{ inv.total|money }}</td></tr>
+  {% if inv.amount_paid %}<tr><td>Paid</td><td class="r">{{ inv.amount_paid|money }}</td></tr><tr><td><b>Balance due</b></td><td class="r"><b>{{ inv.outstanding|money }}</b></td></tr>{% endif %}
+</table></td></tr></table>
+<h2>Payment</h2><div>Payment terms: {{ inv.payment_terms|default:"as agreed" }}. Please quote invoice {{ inv.number|default:"" }} with your payment.</div>
+{% if inv.notes %}<h2>Notes</h2><div>{{ inv.notes|linebreaksbr }}</div>{% endif %}
+{% endblock %}
+{% block footer %}Tax invoice {{ inv.number|default:"draft" }}{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0"><div class="card-body">
+<form method="post" novalidate>{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="row">
+    <div class="col-lg-6">
+      <h2 class="mb-3">Company</h2>
+      {% with field=form.company_name %}{% include "partials/field.html" %}{% endwith %}
+      {% with field=form.legal_name %}{% include "partials/field.html" %}{% endwith %}
+      {% with field=form.tax_registration_number %}{% include "partials/field.html" %}{% endwith %}
+      {% with field=form.address %}{% include "partials/field.html" %}{% endwith %}
+      <div class="row"><div class="col-md-6">{% with field=form.city %}{% include "partials/field.html" %}{% endwith %}</div>
+        <div class="col-md-6">{% with field=form.country %}{% include "partials/field.html" %}{% endwith %}</div>
+        <div class="col-md-6">{% with field=form.phone %}{% include "partials/field.html" %}{% endwith %}</div>
+        <div class="col-md-6">{% with field=form.email %}{% include "partials/field.html" %}{% endwith %}</div></div>
+      {% with field=form.website %}{% include "partials/field.html" %}{% endwith %}
+    </div>
+    <div class="col-lg-6">
+      <h2 class="mb-3">Defaults</h2>
+      <div class="row"><div class="col-md-6">{% with field=form.default_currency %}{% include "partials/field.html" %}{% endwith %}</div>
+        <div class="col-md-6">{% with field=form.fiscal_year_start_month %}{% include "partials/field.html" %}{% endwith %}</div>
+        <div class="col-md-6">{% with field=form.quotation_validity_days %}{% include "partials/field.html" %}{% endwith %}</div>
+        <div class="col-md-6">{% with field=form.default_payment_terms_days %}{% include "partials/field.html" %}{% endwith %}</div></div>
+      <h2 class="mb-3 mt-2">Documents</h2>
+      {% with field=form.max_upload_mb %}{% include "partials/field.html" %}{% endwith %}
+      {% with field=form.allowed_upload_extensions %}{% include "partials/field.html" %}{% endwith %}
+    </div>
+  </div>
+  <button class="btn btn-primary" type="submit">Save settings</button>
+</form></div></div>
+{% endblock %}

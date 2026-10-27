@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Roles & limits{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Roles &amp; limits</h1><p>Account limits are enforced by the server when accounts are created, activated or moved between roles.</p></div></div>
+<div class="card mb-3"><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>Role</th><th>Responsibilities</th><th>Data visible</th><th class="text-end">Active / limit</th><th></th></tr></thead>
+  <tbody>{% for r in roles %}<tr>
+    <td class="fw-semibold">{{ r.name }}</td><td class="small">{{ r.description }}</td><td class="small">{{ r.get_data_scope_display }}</td>
+    <td class="text-end text-nowrap">{{ r.active }} / {{ r.max_accounts }}{% if r.active >= r.max_accounts %} <span class="badge-status badge-warning ms-1">Full</span>{% endif %}</td>
+    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:role_edit' r.pk %}">Edit</a></td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="card"><div class="card-header">Permission matrix</div>
+  <div class="table-responsive"><table class="table table-sm tf-matrix">
+    <thead><tr><th>Capability</th>{% for r in roles %}<th>{{ r.name }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for row in matrix %}<tr><td><span class="text-secondary small">{{ row.cap.module }}</span><br>{{ row.cap.label }}</td>
+      {% for allowed in row.cells %}<td>{% if allowed %}<i class="bi bi-check-circle-fill tf-cap-yes" aria-label="Allowed"></i>{% else %}<i class="bi bi-dash tf-cap-no" aria-label="Not allowed"></i>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+  <div class="card-body small text-secondary border-top">Record-level rules apply on top of this matrix: Sales Engineers see their own and assigned records; Sales Coordinators also see the records of their linked team members; quotation approvers can never approve their own quotations.</div>
+</div>
+{% endblock %}

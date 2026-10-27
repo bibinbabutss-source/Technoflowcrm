@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>{{ title }}</h1><p>Fields marked <span class="required-mark">*</span> are required.</p></div></div>
+<form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  {% block form_top %}{% endblock %}
+  <div class="row g-3">
+  {% for title, fields in form.get_fieldsets %}
+    <div class="{% if fields|length > 4 %}col-12{% else %}col-lg-6{% endif %}">
+      <div class="card h-100">{% if title %}<div class="card-header">{{ title }}</div>{% endif %}<div class="card-body"><div class="row">
+        {% for field in fields %}<div class="{% if field.field.widget.input_type == 'checkbox' or field.field.widget.attrs.rows %}col-12{% else %}col-md-6{% endif %}">{% include "partials/field.html" %}</div>{% endfor %}
+      </div></div></div>
+    </div>
+  {% endfor %}
+  </div>
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+  {% block form_bottom %}{% endblock %}
+  <div class="d-flex gap-2 mt-3">
+    <button class="btn btn-primary" type="submit">{{ submit_label|default:"Save" }}</button>
+    {% if cancel_url %}<a class="btn btn-outline-secondary" href="{{ cancel_url }}">Cancel</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

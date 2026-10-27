@@ -1,0 +1,10 @@
+# sudo systemctl enable --now technoflow-reminders.timer
+[Unit]
+Description=Run Technoflow CRM reminders every morning
+
+[Timer]
+OnCalendar=*-*-* 07:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

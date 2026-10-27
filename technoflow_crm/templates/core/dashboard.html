@@ -1,0 +1,100 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="tf-page-head">
+  <div>
+    <h1>Welcome, {{ request.user.first_name|default:request.user.username }}</h1>
+    <p>{{ profile.role.name }} · {{ profile.role.get_data_scope_display }}{% if start %} · {{ start|date:"d-M-Y" }} to {{ end|date:"d-M-Y" }}{% endif %}</p>
+  </div>
+</div>
+
+{% if cards %}
+<form class="card card-body mb-3 py-2" method="get" data-no-spinner>
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label small mb-1" for="d1">From</label><input class="form-control form-control-sm" type="date" id="d1" name="start" value="{{ start|date:'Y-m-d' }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label small mb-1" for="d2">To</label><input class="form-control form-control-sm" type="date" id="d2" name="end" value="{{ end|date:'Y-m-d' }}"></div>
+    {% if employees %}<div class="col-12 col-md-3"><label class="form-label small mb-1" for="emp">Employee</label>
+      <select class="form-select form-select-sm" id="emp" name="employee"><option value="">Everyone I can see</option>
+        {% for e in employees %}<option value="{{ e.pk }}" {% if e.pk == employee_id %}selected{% endif %}>{{ e.get_full_name|default:e.username }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="col-12 col-md-3 d-flex gap-2"><button class="btn btn-sm btn-primary" type="submit">Apply</button><a class="btn btn-sm btn-outline-secondary" href="{% url 'core:dashboard' %}">Reset</a></div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 mt-2 small">{% for label, range in presets %}<a href="?start={{ range.0|date:'Y-m-d' }}&end={{ range.1|date:'Y-m-d' }}{% if employee_id %}&employee={{ employee_id }}{% endif %}">{{ label }}</a>{% endfor %}</div>
+</form>
+
+<div class="row g-3 mb-3">
+  {% for c in cards %}
+  <div class="col-sm-6 col-xl-3">
+    <a class="tf-stat-link" href="{{ c.url }}"><div class="card tf-stat h-100">
+      <div class="label">{{ c.label }}</div>
+      <div class="value">{{ c.value }}</div>
+      <div class="sub">{{ c.sub }}</div>
+    </div></a>
+  </div>
+  {% endfor %}
+</div>
+
+{% if charts %}
+<div class="row g-3 mb-3">
+  {% for key, title in charts %}
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">{{ title }}</div>
+    <div class="card-body"><div style="position:relative;height:260px">
+      <canvas data-chart="{% url 'reporting:chart' key %}?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}{% if employee_id %}&employee={{ employee_id }}{% endif %}" aria-label="{{ title }}" role="img"></canvas>
+    </div><div class="small text-secondary mt-1">Click a bar or point to open the records behind it.</div></div></div></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if work_lists %}
+<div class="row g-3 mb-3">
+  {% for title, items, url in work_lists %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header d-flex justify-content-between">{{ title }} <a class="small fw-normal" href="{{ url }}">See all</a></div>
+    {% if items %}<ul class="list-group list-group-flush">
+      {% for label, sub, link in items %}<li class="list-group-item small d-flex justify-content-between gap-3"><a href="{{ link }}">{{ label }}</a><span class="text-secondary text-nowrap">{{ sub }}</span></li>{% endfor %}
+    </ul>{% else %}<div class="tf-empty">Nothing here right now.</div>{% endif %}
+  </div></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+
+{% if roles %}
+<h2 class="h5 mt-4 mb-3">Administration</h2>
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-xl-3"><a class="tf-stat-link" href="{% url 'accounts:user_list' %}"><div class="card tf-stat">
+      <div class="label">Active accounts</div><div class="value">{{ total_active }} <span class="fs-6 text-secondary fw-normal">/ {{ total_limit }}</span></div><div class="sub">across all roles</div></div></a></div>
+  <div class="col-sm-6 col-xl-3"><a class="tf-stat-link" href="{% url 'accounts:login_history' %}?event=failed"><div class="card tf-stat">
+      <div class="label">Failed sign-ins</div><div class="value">{{ failed_logins_7d }}</div><div class="sub">last 7 days</div></div></a></div>
+  <div class="col-sm-6 col-xl-3"><a class="tf-stat-link" href="{% url 'accounts:user_list' %}"><div class="card tf-stat">
+      <div class="label">Awaiting first password change</div><div class="value">{{ pending_password_change }}</div><div class="sub">active accounts</div></div></a></div>
+  <div class="col-sm-6 col-xl-3"><a class="tf-stat-link" href="{% url 'accounts:role_list' %}"><div class="card tf-stat">
+      <div class="label">Roles</div><div class="value">{{ roles|length }}</div><div class="sub">limits editable in Roles &amp; Limits</div></div></a></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header d-flex justify-content-between">Accounts by role <a class="small fw-normal" href="{% url 'accounts:role_list' %}">Manage</a></div>
+    <div class="table-responsive"><table class="table">
+      <thead><tr><th>Role</th><th class="text-end">Active</th><th class="text-end">Limit</th><th class="text-end">Inactive</th></tr></thead>
+      <tbody>{% for r in roles %}<tr><td>{{ r.name }}</td><td class="text-end">{{ r.active }}</td>
+          <td class="text-end">{{ r.max_accounts }}{% if r.active >= r.max_accounts %} <span class="badge-status badge-warning ms-1">Full</span>{% endif %}</td>
+          <td class="text-end text-secondary">{{ r.inactive }}</td></tr>{% endfor %}</tbody>
+    </table></div></div></div>
+  {% if recent_audit is not None %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header d-flex justify-content-between">Recent activity <a class="small fw-normal" href="{% url 'core:audit_log' %}">Full audit log</a></div>
+    {% if recent_audit %}<ul class="list-group list-group-flush">
+      {% for e in recent_audit %}<li class="list-group-item small d-flex justify-content-between gap-3">
+        <span><strong>{% if e.user %}{{ e.user.get_full_name|default:e.user.username }}{% else %}System{% endif %}</strong> {{ e.get_action_display|lower }} {{ e.object_repr }}</span>
+        <span class="text-secondary text-nowrap">{{ e.timestamp|timesince }} ago</span></li>{% endfor %}
+    </ul>{% else %}<div class="tf-empty"><i class="bi bi-journal"></i>No activity recorded yet.</div>{% endif %}
+  </div></div>
+  {% endif %}
+</div>
+{% elif not cards %}
+<div class="card"><div class="card-body">Your role has no dashboard figures. Use the menu to open your modules.</div></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if charts %}<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>{% endif %}
+{% endblock %}

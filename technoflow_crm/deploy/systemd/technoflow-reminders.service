@@ -1,0 +1,10 @@
+# Daily reminders (visits, tasks, overdue invoices, expiring quotations). Run by the timer below.
+[Unit]
+Description=Technoflow CRM daily reminders
+
+[Service]
+Type=oneshot
+User=technoflow
+WorkingDirectory=/srv/technoflow_crm
+EnvironmentFile=/srv/technoflow_crm/.env
+ExecStart=/srv/technoflow_crm/.venv/bin/python manage.py send_reminders

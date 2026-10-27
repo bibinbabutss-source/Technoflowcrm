@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}KPI definitions{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>KPI definitions</h1><p>The calculation behind each KPI is fixed and shown below. You can rename, re-weight or switch KPIs off. Active weights total {{ total_weight.normalize }}%{% if total_weight != 100 %} — the overall score uses the weights of KPIs that have a target, so the total need not be 100{% endif %}.</p></div></div>
+<div class="card"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>KPI</th><th>How it is calculated</th><th class="text-end">Weight</th><th>Active</th><th></th></tr></thead>
+<tbody>{% for k in kpis %}<tr><td class="fw-semibold">{{ k.name }}</td><td class="small">{{ k.description }}</td><td class="text-end">{{ k.weight.normalize }}%</td><td>{{ k.is_active|yesno:"Yes,No" }}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'performance:kpi_edit' k.pk %}">Edit</a></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

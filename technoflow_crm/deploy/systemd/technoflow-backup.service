@@ -1,0 +1,9 @@
+[Unit]
+Description=Technoflow CRM backup (database + documents)
+
+[Service]
+Type=oneshot
+User=technoflow
+WorkingDirectory=/srv/technoflow_crm
+EnvironmentFile=/srv/technoflow_crm/.env
+ExecStart=/bin/bash /srv/technoflow_crm/deploy/backup.sh

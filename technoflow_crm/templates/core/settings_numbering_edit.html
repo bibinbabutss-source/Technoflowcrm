@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ seq.name }} numbering{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0;max-width:640px"><div class="card-body">
+  <h2 class="mb-1">{{ seq.name }} numbering</h2><p class="text-secondary">Next number with current settings: <code>{{ seq.preview }}</code></p>
+  <form method="post" novalidate>{% csrf_token %}
+    {% include "partials/form_errors.html" %}
+    {% for field in form %}{% include "partials/field.html" %}{% endfor %}
+    <button class="btn btn-primary" type="submit">Save</button> <a class="btn btn-outline-secondary" href="{% url 'core:numbering' %}">Cancel</a>
+  </form>
+</div></div>
+{% endblock %}

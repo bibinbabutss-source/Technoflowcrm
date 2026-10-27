@@ -1,0 +1,20 @@
+{% load crm %}
+{% if panel %}
+<div class="card mb-3" id="documents"><div class="card-header d-flex justify-content-between">Documents <span class="small fw-normal">{{ panel.docs|length }}</span></div>
+  {% if panel.docs %}<ul class="list-group list-group-flush">{% for d in panel.docs %}
+    <li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
+      <span class="text-truncate"><i class="bi bi-{{ d.icon }} me-1 text-secondary"></i><a href="{{ d.get_absolute_url }}">{{ d.title }}</a>{% if d.version > 1 %} <span class="text-secondary">v{{ d.version }}</span>{% endif %}<br><span class="text-secondary">{{ d.uploaded_by|person }} · {{ d.created_at|date:"d-M-Y" }}{% if d.category %} · {{ d.category }}{% endif %}</span></span>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'documents:download' d.pk %}" title="Download {{ d.original_name }}" aria-label="Download {{ d.title }}"><i class="bi bi-download"></i></a></li>{% endfor %}</ul>
+  {% else %}<div class="tf-empty py-3">No documents.</div>{% endif %}
+  {% if panel.can_upload %}<div class="card-body border-top">
+    <form method="post" action="{% url 'documents:upload' %}" enctype="multipart/form-data" novalidate>
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+      <input type="hidden" name="target_type" value="{{ panel.target_type }}"><input type="hidden" name="target_id" value="{{ panel.target.pk }}">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}#documents">
+      <div class="mb-2"><input class="form-control form-control-sm" type="file" name="file" required aria-label="File"></div>
+      <div class="row g-2 mb-2"><div class="col-7"><input class="form-control form-control-sm" name="title" placeholder="Title (optional)" aria-label="Title"></div>
+        <div class="col-5">{{ panel.form.category }}</div></div>
+      <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-upload me-1"></i>Upload</button>
+    </form></div>{% endif %}
+</div>
+{% endif %}

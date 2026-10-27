@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Targets{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Targets</h1></div>{% if can_manage %}<a class="btn btn-primary" href="{% url 'performance:set_targets' %}">Set targets</a>{% endif %}</div>
+<form class="tf-filterbar mb-3" method="get" data-no-spinner>
+  {% if employees %}<div><label class="form-label small" for="employee">Employee</label><select class="form-select" id="employee" name="employee"><option value="">All</option>{% for e in employees %}<option value="{{ e.pk }}" {% if request.GET.employee == e.pk|stringformat:"s" %}selected{% endif %}>{{ e|person }}</option>{% endfor %}</select></div>{% endif %}
+  <div><label class="form-label small" for="period">Period</label><select class="form-select" id="period" name="period"><option value="">All</option><option value="month">Monthly</option><option value="quarter">Quarterly</option><option value="year">Annual</option></select></div>
+  <div><label class="form-label small" for="year">Year</label><input class="form-control" id="year" name="year" type="number" value="{{ request.GET.year }}"></div>
+  <div><button class="btn btn-outline-primary" type="submit">Apply</button></div></form>
+<div class="card">{% if targets %}<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Employee</th><th>KPI</th><th>Period</th><th class="text-end">Target</th><th></th></tr></thead>
+<tbody>{% for t in targets %}<tr><td>{% if t.employee %}{{ t.employee|person }}{% else %}Company-wide{% endif %}</td><td>{{ t.kpi.name }}</td><td>{{ t.get_period_type_display }} · {{ t.period_start|date:"M Y" }}</td><td class="text-end">{% if t.kpi.unit == "amount" %}{{ t.target_value|money }}{% else %}{{ t.target_value.normalize }}{% endif %}</td>
+  <td class="text-end">{% if can_manage %}<form method="post" class="d-inline" data-confirm="Delete this target?">{% csrf_token %}<input type="hidden" name="delete" value="{{ t.pk }}"><button class="btn btn-sm btn-outline-danger" type="submit">Delete</button></form>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="tf-empty"><i class="bi bi-bullseye"></i>No targets set yet.</div>{% endif %}</div>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "crud/form.html" %}
+{% block form_bottom %}{% endblock %}
+{% block content %}
+{{ block.super }}
+<form method="post" class="mt-3" data-confirm="Remove {{ contact.name }} from this customer?">{% csrf_token %}
+  <input type="hidden" name="delete" value="1"><button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash me-1"></i>Remove contact</button>
+</form>
+{% endblock %}

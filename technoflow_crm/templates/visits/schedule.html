@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Visits — week{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Weekly visit schedule</h1><p>Week of {{ days.0.0|date:"d M Y" }}</p></div>
+  <div class="d-flex gap-2 flex-wrap align-items-end">{% include "visits/_employee_filter.html" %}{% include "visits/_tabs.html" %}</div></div>
+<div class="d-flex justify-content-between mb-2">
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring start=prev|date:'Y-m-d' %}"><i class="bi bi-chevron-left"></i> Previous week</a>
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring start=None %}">This week</a>
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring start=next|date:'Y-m-d' %}">Next week <i class="bi bi-chevron-right"></i></a>
+</div>
+<div class="row g-2">
+{% for day, visits in days %}
+  <div class="col-md-6 col-xl"><div class="card h-100 {% if day == today %}border-success{% endif %}"><div class="card-header small">{{ day|date:"D d M" }}{% if day == today %} · today{% endif %}</div>
+    <div class="card-body p-2">{% for v in visits %}
+      <a class="d-block border rounded p-2 mb-2 text-decoration-none small {% if v.is_missed %}border-danger{% endif %}" href="{{ v.get_absolute_url }}">
+        <strong class="text-body">{{ v.start_time|time:"H:i" }}–{{ v.end_time|time:"H:i" }}</strong> <span class="badge-status {% if v.status == 'completed' %}badge-active{% elif v.is_missed %}badge-danger{% elif v.status == 'cancelled' %}badge-inactive{% else %}badge-info{% endif %}">{% if v.is_missed %}Missed{% else %}{{ v.get_status_display }}{% endif %}</span><br>
+        <span class="text-body">{{ v.customer.company_name }}</span><br><span class="text-secondary">{{ v.location }} · {{ v.assigned_to|person }}</span></a>
+    {% empty %}<div class="small text-secondary">No visits</div>{% endfor %}</div></div></div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ task.code }} {{ task.title }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'tasks:list' %}">Tasks</a></li><li class="breadcrumb-item active">{{ task.code }}</li></ol></nav>
+<div class="tf-page-head">
+  <div><h1>{{ task.title }} <span class="badge-status {% if task.is_overdue %}badge-danger{% elif task.status == 'completed' %}badge-active{% else %}badge-info{% endif %} align-middle">{% if task.is_overdue %}Overdue{% else %}{{ task.get_status_display }}{% endif %}</span></h1>
+    <p>{{ task.code }} · {{ task.get_category_display }} · {{ task.get_priority_display }} priority</p></div>
+  <div class="tf-actions">
+    {% if can_edit %}
+      {% if task.is_open %}<form method="post" action="{% url 'tasks:set_status' task.pk %}">{% csrf_token %}<input type="hidden" name="status" value="completed"><button class="btn btn-primary" type="submit"><i class="bi bi-check2 me-1"></i>Mark completed</button></form>
+      {% else %}<form method="post" action="{% url 'tasks:set_status' task.pk %}">{% csrf_token %}<input type="hidden" name="status" value="open"><button class="btn btn-outline-primary" type="submit">Reopen</button></form>{% endif %}
+      <a class="btn btn-outline-primary" href="{% url 'tasks:edit' task.pk %}"><i class="bi bi-pencil me-1"></i>Edit / reassign</a>
+    {% endif %}
+    {% if can_delete %}<form method="post" action="{% url 'tasks:delete' task.pk %}" data-confirm="Delete task {{ task.code }}?">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i>Delete</button></form>{% endif %}
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card"><div class="card-header">Details</div><div class="card-body">
+    <dl class="row mb-0 small tf-dl">
+      <dt class="col-5">Assigned to</dt><dd class="col-7">{{ task.assigned_to|person }}</dd>
+      <dt class="col-5">Created by</dt><dd class="col-7">{{ task.created_by|person }} · {{ task.created_at|date:"d-M-Y" }}</dd>
+      <dt class="col-5">Start</dt><dd class="col-7">{{ task.start_date|date:"d-M-Y"|default:"—" }}</dd>
+      <dt class="col-5">Due</dt><dd class="col-7">{{ task.due_date|date:"d-M-Y" }}</dd>
+      {% if task.completed_at %}<dt class="col-5">Completed</dt><dd class="col-7">{{ task.completed_at|date:"d-M-Y H:i" }}</dd>{% endif %}
+      <dt class="col-5">Related to</dt><dd class="col-7">{% for r in task.related_records %}<a href="{{ r.get_absolute_url }}">{{ r }}</a><br>{% empty %}—{% endfor %}</dd>
+    </dl>
+    {% if task.description %}<hr><div class="small">{{ task.description|linebreaksbr }}</div>{% endif %}
+  </div></div></div>
+  <div class="col-lg-7">
+    <div class="card mb-3" id="comments"><div class="card-header">Comments</div><div class="card-body">
+      {% for c in comments %}<div class="mb-3"><div class="small"><strong>{{ c.user|person }}</strong> <span class="text-secondary">{{ c.created_at|date:"d-M-Y H:i" }}</span></div><div>{{ c.text|linebreaksbr }}</div></div>{% empty %}<p class="text-secondary small">No comments yet.</p>{% endfor %}
+      {% if "tasks.create" in crm_caps %}<form method="post" novalidate>{% csrf_token %}{{ form.text }}{{ form.text.errors }}<button class="btn btn-outline-primary btn-sm mt-2" type="submit">Add comment</button></form>{% endif %}
+    </div></div>
+    <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+  </div>
+</div>
+{% endblock %}

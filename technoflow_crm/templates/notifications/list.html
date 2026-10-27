@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Notifications</h1></div>
+  <div class="tf-actions">
+    <div class="btn-group"><a class="btn btn-outline-secondary {% if show != 'unread' %}active{% endif %}" href="?show=all">All</a><a class="btn btn-outline-secondary {% if show == 'unread' %}active{% endif %}" href="?show=unread">Unread</a></div>
+    <form method="post" action="{% url 'notifications:read_all' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-outline-primary" type="submit">Mark all as read</button></form>
+    <a class="btn btn-outline-secondary" href="{% url 'notifications:preferences' %}"><i class="bi bi-sliders me-1"></i>Preferences</a></div></div>
+<div class="card">{% if page.object_list %}<ul class="list-group list-group-flush">{% for n in page %}
+  <li class="list-group-item d-flex justify-content-between align-items-start gap-3 {% if not n.is_read %}bg-light{% endif %}">
+    <div><div class="{% if not n.is_read %}fw-semibold{% endif %}">{{ n.title }}</div><div class="small text-secondary">{{ n.message }}</div><div class="small text-secondary">{{ n.created_at|date:"d-M-Y H:i" }}{% if n.emailed %} · emailed{% endif %}</div></div>
+    {% if n.url %}<form method="post" action="{% url 'notifications:open' n.pk %}" data-no-spinner>{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit">Open</button></form>{% endif %}</li>{% endfor %}</ul>
+  {% include "partials/pagination.html" %}
+  {% else %}<div class="tf-empty"><i class="bi bi-bell"></i>No notifications.</div>{% endif %}</div>
+{% endblock %}

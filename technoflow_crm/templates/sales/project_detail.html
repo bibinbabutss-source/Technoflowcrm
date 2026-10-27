@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ project.code }} {{ project.name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'sales:projects' %}">Projects</a></li><li class="breadcrumb-item active">{{ project.code }}</li></ol></nav>
+<div class="tf-page-head"><div><h1>{{ project.name }} <span class="badge-status badge-info align-middle">{{ project.get_status_display }}</span></h1><p>{{ project.code }} · <a href="{{ project.customer.get_absolute_url }}">{{ project.customer.company_name }}</a></p></div>
+  <div class="tf-actions">{% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'sales:project_edit' project.pk %}"><i class="bi bi-pencil me-1"></i>Edit / update status</a>{% endif %}</div></div>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card mb-3"><div class="card-header">Details</div><div class="card-body">
+    <div class="mb-3"><div class="d-flex justify-content-between small"><span>Progress</span><span>{{ project.progress }}%</span></div><div class="progress" role="progressbar" aria-valuenow="{{ project.progress }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width:{{ project.progress }}%;background:var(--tf-olive)"></div></div></div>
+    <dl class="row mb-0 small tf-dl">
+      <dt class="col-5">Sales order</dt><dd class="col-7">{% if project.sales_order %}<a href="{{ project.sales_order.get_absolute_url }}">{{ project.sales_order.number }}</a>{% else %}—{% endif %}</dd>
+      <dt class="col-5">Opportunity</dt><dd class="col-7">{% if project.opportunity %}<a href="{{ project.opportunity.get_absolute_url }}">{{ project.opportunity }}</a>{% else %}—{% endif %}</dd>
+      <dt class="col-5">Type</dt><dd class="col-7">{{ project.project_type|default:"—" }}</dd>
+      <dt class="col-5">Location</dt><dd class="col-7">{{ project.location|default:"—" }}</dd>
+      <dt class="col-5">Manager</dt><dd class="col-7">{{ project.project_manager|person }}</dd>
+      <dt class="col-5">Start</dt><dd class="col-7">{{ project.start_date|date:"d-M-Y"|default:"—" }}</dd>
+      <dt class="col-5">Planned completion</dt><dd class="col-7">{{ project.end_date|date:"d-M-Y"|default:"—" }}</dd>
+    </dl>{% if project.description %}<hr><div class="small">{{ project.description|linebreaksbr }}</div>{% endif %}</div></div>
+    {% include "documents/_panel.html" with target=project %}</div>
+  <div class="col-lg-7"><div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div></div>
+</div>
+{% endblock %}

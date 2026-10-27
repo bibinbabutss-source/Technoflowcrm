@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Record payment{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Record payment</h1><p>Allocate the money to the customer's open invoices. Anything not allocated stays as credit you can allocate later.</p></div></div>
+<form method="get" class="tf-filterbar mb-3" data-no-spinner>
+  <div><label class="form-label small" for="customer">Customer</label><select class="form-select" id="customer" name="customer" onchange="this.form.submit()"><option value="">Choose a customer with open invoices</option>{% for c in customers %}<option value="{{ c.pk }}" {% if customer and customer.pk == c.pk %}selected{% endif %}>{{ c.company_name }} ({{ c.code }})</option>{% endfor %}</select></div>
+  <noscript><button class="btn btn-outline-primary" type="submit">Choose</button></noscript>
+</form>
+{% if customer %}
+<form method="post" novalidate>{% csrf_token %}<input type="hidden" name="customer" value="{{ customer.pk }}">
+  {% if errors %}<div class="alert alert-danger">{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+  {% include "partials/form_errors.html" %}
+  <div class="row g-3">
+    <div class="col-lg-4"><div class="card"><div class="card-header">Payment from {{ customer.company_name }}</div><div class="card-body">{% for field in form %}{% include "partials/field.html" %}{% endfor %}</div></div></div>
+    <div class="col-lg-8"><div class="card"><div class="card-header">Allocate to invoices</div>
+      {% if rows %}<div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Invoice</th><th>Due</th><th class="text-end">Total</th><th class="text-end">Outstanding</th><th style="width:160px">Allocate</th></tr></thead>
+      <tbody>{% for r in rows %}<tr><td><a href="{{ r.inv.get_absolute_url }}" target="_blank" rel="noopener">{{ r.inv.display_number }}</a>{% if r.inv.is_overdue %} <span class="badge-status badge-danger">Overdue</span>{% endif %}</td><td>{{ r.inv.due_date|date:"d-M-Y" }}</td><td class="text-end">{{ r.inv.total|money }}</td><td class="text-end">{{ r.inv.outstanding|money }}</td>
+        <td><input class="form-control form-control-sm text-end" type="number" step="0.01" min="0" max="{{ r.inv.outstanding }}" name="alloc_{{ r.inv.pk }}" value="{{ r.value }}" aria-label="Allocate to {{ r.inv.display_number }}"></td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="tf-empty">This customer has no open invoices. The payment will be kept as unallocated credit.</div>{% endif %}
+      <div class="card-body small text-secondary border-top">An allocation cannot exceed the invoice's outstanding balance, and all allocations together cannot exceed the payment amount. An invoice becomes Paid only when its allocations equal its total.</div></div></div>
+  </div>
+  <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit">Record payment</button><a class="btn btn-outline-secondary" href="{% url 'invoicing:payments' %}">Cancel</a></div>
+</form>
+{% endif %}
+{% endblock %}

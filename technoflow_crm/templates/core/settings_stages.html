@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0"><div class="card-body">
+  <div class="btn-group mb-3">{% for k, label in kinds %}<a class="btn btn-sm {% if k == kind %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'core:stages' k %}">{{ label }}</a>{% endfor %}</div>
+  <div class="row g-4">
+  <div class="col-lg-7"><div class="table-responsive"><table class="table">
+    <thead><tr><th>Order</th><th>Stage</th>{% if kind == "opportunity" %}<th class="text-end">Default probability</th>{% else %}<th>Counts as qualified</th>{% endif %}<th>Status</th><th></th></tr></thead>
+    <tbody>{% for s in stages %}<tr><td>{{ s.order }}</td><td>{{ s.name }}{% if s.is_won %} <span class="badge-status badge-success">Won</span>{% elif s.is_lost %} <span class="badge-status badge-danger">Lost</span>{% endif %}</td>
+      {% if kind == "opportunity" %}<td class="text-end">{{ s.default_probability }}%</td>{% else %}<td>{{ s.is_qualified|yesno:"Yes,—" }}</td>{% endif %}
+      <td>{% if s.is_active %}Active{% else %}<span class="text-secondary">Hidden</span>{% endif %}</td>
+      <td class="text-end"><a href="{% url 'core:stage_edit' kind s.pk %}">Edit</a></td></tr>{% endfor %}</tbody></table></div>
+    <p class="small text-secondary">Stages are never deleted (history refers to them); hide a stage to stop using it. Won and Lost are fixed system stages.</p></div>
+  <div class="col-lg-5"><h2 class="mb-3">{% if obj %}Edit {{ obj.name }}{% else %}Add a stage{% endif %}</h2>
+    <form method="post" novalidate>{% csrf_token %}{% include "partials/form_errors.html" %}
+      {% for field in form %}{% include "partials/field.html" %}{% endfor %}
+      <button class="btn btn-primary" type="submit">Save</button>{% if obj %} <a class="btn btn-link" href="{% url 'core:stages' kind %}">Cancel</a>{% endif %}</form></div>
+  </div></div></div>
+{% endblock %}

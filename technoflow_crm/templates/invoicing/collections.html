@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Collections{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Collections</h1><p>Receivables, ageing and follow-ups.</p></div>
+  <div class="tf-actions"><a class="btn btn-outline-secondary" href="{% url 'invoicing:payments' %}"><i class="bi bi-list-ul me-1"></i>Payments</a>{% if can_pay %}<a class="btn btn-primary" href="{% url 'invoicing:payment_create' %}"><i class="bi bi-cash-coin me-1"></i>Record payment</a>{% endif %}</div></div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><a class="tf-stat-link" href="{% url 'invoicing:list' %}?status=open"><div class="card tf-stat"><div class="label">Outstanding receivables</div><div class="value fs-5">{{ outstanding_total|money }}</div></div></a></div>
+  <div class="col-6 col-lg-3"><a class="tf-stat-link" href="{% url 'invoicing:list' %}?status=overdue"><div class="card tf-stat"><div class="label">Overdue</div><div class="value fs-5 text-danger">{{ overdue_total|money }}</div><div class="sub">{{ overdue|length }} invoices</div></div></a></div>
+  <div class="col-6 col-lg-3"><a class="tf-stat-link" href="{% url 'invoicing:payments' %}"><div class="card tf-stat"><div class="label">Collected this month</div><div class="value fs-5">{{ collected_month|money }}</div></div></a></div>
+  <div class="col-6 col-lg-3"><a class="tf-stat-link" href="{% url 'invoicing:list' %}?disputed=yes"><div class="card tf-stat"><div class="label">Disputed</div><div class="value fs-5">{{ disputed|length }}</div></div></a></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card mb-3"><div class="card-header">Ageing of receivables</div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Days past due</th><th class="text-end">Invoices</th><th class="text-end">Outstanding</th></tr></thead>
+    <tbody>{% for b in ageing %}<tr><td>{{ b.label }}</td><td class="text-end">{{ b.count }}</td><td class="text-end">{{ b.amount|money }}</td></tr>{% endfor %}</tbody></table></div></div>
+    {% if credits %}<div class="card"><div class="card-header">Unallocated credit</div><ul class="list-group list-group-flush">{% for p in credits %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ p.get_absolute_url }}">{{ p.number }} · {{ p.customer.company_name }}</a><span>{{ p.unallocated|money }}</span></li>{% endfor %}</ul></div>{% endif %}</div>
+  <div class="col-lg-8"><div class="card"><div class="card-header">Overdue invoices</div>
+    {% if overdue %}<div class="table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Invoice</th><th>Customer</th><th>Due</th><th class="text-end">Days</th><th class="text-end">Outstanding</th><th></th></tr></thead>
+    <tbody>{% for i in overdue %}<tr><td><a href="{{ i.get_absolute_url }}">{{ i.number }}</a>{% if i.is_disputed %} <span class="badge-status badge-danger">Disputed</span>{% endif %}</td><td>{{ i.customer.company_name }}</td><td>{{ i.due_date|date:"d-M-Y" }}</td><td class="text-end">{{ i.days_overdue }}</td><td class="text-end">{{ i.outstanding|money }}</td>
+      <td class="text-end text-nowrap">{% if "tasks.create" in crm_caps %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'tasks:create' %}?invoice={{ i.pk }}&customer={{ i.customer_id }}&category=collection&title=Collection follow-up {{ i.number }}">Follow-up</a>{% endif %}
+        {% if can_pay %}<a class="btn btn-sm btn-outline-primary" href="{% url 'invoicing:payment_create' %}?customer={{ i.customer_id }}&invoice={{ i.pk }}">Payment</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div class="tf-empty"><i class="bi bi-emoji-smile"></i>No overdue invoices.</div>{% endif %}</div></div>
+</div>
+{% endblock %}

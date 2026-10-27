@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ inv.display_number }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'invoicing:list' %}">Invoices</a></li><li class="breadcrumb-item active">{{ inv.display_number }}</li></ol></nav>
+<div class="tf-page-head">
+  <div><h1>{% if inv.number %}Invoice {{ inv.number }}{% else %}Draft invoice{% endif %}
+    <span class="badge-status {% if inv.is_overdue %}badge-danger{% elif inv.status == 'paid' %}badge-active{% elif inv.status == 'partially_paid' %}badge-warning{% elif inv.status == 'issued' %}badge-info{% else %}badge-inactive{% endif %} align-middle">{{ inv.display_status }}{% if inv.is_overdue %} · {{ inv.days_overdue }} days{% endif %}</span>
+    {% if inv.is_disputed %}<span class="badge-status badge-danger align-middle">Disputed</span>{% endif %}</h1>
+    <p><a href="{{ inv.customer.get_absolute_url }}">{{ inv.customer.company_name }}</a> · order <a href="{{ inv.order.get_absolute_url }}">{{ inv.order.number }}</a>{% if inv.milestone %} · {{ inv.milestone }}{% endif %}</p></div>
+  <div class="tf-actions">
+    {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'invoicing:edit' inv.pk %}"><i class="bi bi-pencil me-1"></i>Edit draft</a>
+      <form method="post" action="{% url 'invoicing:issue' inv.pk %}" data-confirm="Issue this invoice for {{ inv.currency }} {{ inv.total|money }}? A number is assigned and the invoice is locked.">{% csrf_token %}<button class="btn btn-primary" type="submit"><i class="bi bi-send-check me-1"></i>Issue invoice</button></form>
+      <form method="post" action="{% url 'invoicing:delete' inv.pk %}" data-confirm="Delete this draft invoice?">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button></form>{% endif %}
+    {% if can_pay %}<a class="btn btn-primary" href="{% url 'invoicing:payment_create' %}?customer={{ inv.customer_id }}&invoice={{ inv.pk }}"><i class="bi bi-cash-coin me-1"></i>Record payment</a>{% endif %}
+    {% if inv.status != 'draft' and inv.status != 'cancelled' and "tasks.create" in crm_caps and inv.outstanding > 0 %}<a class="btn btn-outline-secondary" href="{% url 'tasks:create' %}?invoice={{ inv.pk }}&customer={{ inv.customer_id }}&category=collection&title=Collection follow-up {{ inv.number }}"><i class="bi bi-telephone me-1"></i>Collection follow-up</a>{% endif %}
+    {% if can_dispute %}<a class="btn btn-outline-secondary" href="{% url 'invoicing:dispute' inv.pk %}">Dispute</a>{% endif %}
+    {% if can_cancel %}<a class="btn btn-outline-danger" href="{% url 'invoicing:cancel' inv.pk %}">Cancel</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'invoicing:pdf' inv.pk %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+  </div>
+</div>
+{% if inv.status == "cancelled" %}<div class="alert alert-secondary">Cancelled {{ inv.cancelled_at|date:"d-M-Y" }} by {{ inv.cancelled_by|person }}: {{ inv.cancel_reason }}</div>{% endif %}
+{% if inv.is_disputed %}<div class="alert alert-warning">Disputed by the customer: {{ inv.dispute_note|default:"no details" }}</div>{% endif %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Invoice total</div><div class="value fs-5">{{ inv.total|money }}</div><div class="sub">{{ inv.currency }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Allocated payments</div><div class="value fs-5">{{ inv.amount_paid|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Outstanding</div><div class="value fs-5 {% if inv.is_overdue %}text-danger{% endif %}">{{ inv.outstanding|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Due date</div><div class="value fs-5">{{ inv.due_date|date:"d-M-Y" }}</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="card mb-3"><div class="card-header">Lines</div><div class="table-responsive"><table class="table table-sm">
+      <thead><tr><th>#</th><th>Description</th><th class="text-end">Qty</th><th class="text-end">Unit price</th><th class="text-end">VAT</th><th class="text-end">Net</th></tr></thead>
+      <tbody>{% for ln in lines %}<tr><td>{{ forloop.counter }}</td><td>{{ ln.description|linebreaksbr }}</td><td class="text-end">{{ ln.quantity.normalize }} {{ ln.unit }}</td><td class="text-end">{{ ln.unit_price|money }}</td><td class="text-end">{{ ln.tax_rate_value.normalize }}%</td><td class="text-end">{{ ln.line_net|money }}</td></tr>{% endfor %}</tbody>
+      <tfoot><tr><td colspan="5" class="text-end">Amount excl. VAT</td><td class="text-end">{{ inv.subtotal|money }}</td></tr>
+        {% for rate, t in tax_breakdown.items %}<tr><td colspan="5" class="text-end text-secondary">VAT {{ rate.normalize }}% on {{ t.base|money }}</td><td class="text-end">{{ t.tax|money }}</td></tr>{% endfor %}
+        <tr><td colspan="5" class="text-end">VAT total</td><td class="text-end">{{ inv.tax_amount|money }}</td></tr>
+        <tr class="fw-semibold"><td colspan="5" class="text-end">Total {{ inv.currency }}</td><td class="text-end">{{ inv.total|money }}</td></tr></tfoot></table></div></div>
+    <div class="card mb-3"><div class="card-header">Payment history</div>
+      {% if allocations %}<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>Receipt</th><th>Method / reference</th><th class="text-end">Allocated</th></tr></thead>
+      <tbody>{% for a in allocations %}<tr><td>{{ a.payment.payment_date|date:"d-M-Y" }}</td><td>{% if "collections.view" in crm_caps %}<a href="{{ a.payment.get_absolute_url }}">{{ a.payment.number }}</a>{% else %}{{ a.payment.number }}{% endif %}{% if a.payment.is_reversal %} <span class="badge-status badge-danger">Reversal</span>{% endif %}</td><td>{{ a.payment.get_method_display }} {{ a.payment.reference }}</td><td class="text-end {% if a.amount < 0 %}text-danger{% endif %}">{{ a.amount|money }}</td></tr>{% endfor %}</tbody>
+      <tfoot><tr class="fw-semibold"><td colspan="3" class="text-end">Total allocated</td><td class="text-end">{{ inv.amount_paid|money }}</td></tr></tfoot></table></div>
+      {% else %}<div class="tf-empty py-3">No payments allocated.</div>{% endif %}</div>
+    {% if tasks %}<div class="card mb-3"><div class="card-header">Collection follow-ups</div><ul class="list-group list-group-flush">{% for t in tasks %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ t.get_absolute_url }}">{{ t.code }} {{ t.title }}</a><span>{{ t.assigned_to|person }} · {{ t.due_date|date:"d-M-Y" }} · {{ t.get_status_display }}</span></li>{% endfor %}</ul></div>{% endif %}
+  </div>
+  <div class="col-xl-4">
+    <div class="card mb-3"><div class="card-header">Details</div><div class="card-body"><dl class="row mb-0 small tf-dl">
+      <dt class="col-5">Invoice date</dt><dd class="col-7">{{ inv.invoice_date|date:"d-M-Y" }}</dd>
+      <dt class="col-5">Payment terms</dt><dd class="col-7">{{ inv.payment_terms|default:"—" }}</dd>
+      <dt class="col-5">Reference</dt><dd class="col-7">{{ inv.reference|default:"—" }}</dd>
+      <dt class="col-5">Issued</dt><dd class="col-7">{% if inv.issued_at %}{{ inv.issued_at|date:"d-M-Y H:i" }}<br>{{ inv.issued_by|person }}{% else %}Not yet{% endif %}</dd>
+      <dt class="col-5">Prepared by</dt><dd class="col-7">{{ inv.created_by|person }}</dd>
+      {% if inv.notes %}<dt class="col-5">Notes</dt><dd class="col-7">{{ inv.notes|linebreaksbr }}</dd>{% endif %}
+    </dl></div></div>
+    {% include "documents/_panel.html" with target=inv %}
+    <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+  </div>
+</div>
+{% endblock %}

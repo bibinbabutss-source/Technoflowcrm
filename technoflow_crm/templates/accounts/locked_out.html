@@ -1,0 +1,7 @@
+{% extends "auth_base.html" %}
+{% block title %}Account locked{% endblock %}
+{% block content %}
+<h1 class="mb-2"><i class="bi bi-lock me-2"></i>Too many failed sign-in attempts</h1>
+<p class="text-secondary">For security, sign-in for this account is paused for a while. Try again later, or ask the System Administrator to reset your password.</p>
+<a class="btn btn-outline-primary" href="{% url 'accounts:login' %}">Back to sign in</a>
+{% endblock %}

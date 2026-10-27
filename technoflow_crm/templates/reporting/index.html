@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Reports</h1><p>Every report can be filtered by date and employee and exported to Excel, CSV or PDF. Figures use the same calculations as the dashboard.</p></div>
+  {% if "data.import" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'reporting:import_start' %}"><i class="bi bi-upload me-1"></i>Import customers / leads</a>{% endif %}</div>
+<div class="row g-3">{% for group, items in groups %}
+  <div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-header">{{ group }}</div><ul class="list-group list-group-flush">
+    {% for r in items %}<li class="list-group-item"><a class="fw-semibold" href="{% url 'reporting:report' r.key %}">{{ r.title }}</a><div class="small text-secondary">{{ r.description }}</div></li>{% endfor %}</ul></div></div>
+{% endfor %}</div>
+{% endblock %}

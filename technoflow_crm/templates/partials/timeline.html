@@ -1,0 +1,13 @@
+{% load crm %}
+{% if activities %}
+<ul class="tf-timeline list-unstyled mb-0">
+  {% for a in activities %}
+  <li class="tf-timeline-item">
+    <span class="tf-timeline-dot tf-k-{{ a.kind }}"></span>
+    <div class="small"><strong>{{ a.user|person }}</strong> · {{ a.message }}
+      {% if show_object %}<span class="text-secondary">— {{ a.object_repr }}</span>{% endif %}</div>
+    <div class="small text-secondary">{{ a.timestamp|date:"d-M-Y H:i" }} · {{ a.get_kind_display }}</div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}<div class="tf-empty py-3">No activity yet.</div>{% endif %}

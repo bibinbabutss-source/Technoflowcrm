@@ -1,0 +1,14 @@
+{% load crm %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring year=cal.prev.year month=cal.prev.month %}"><i class="bi bi-chevron-left"></i> {{ cal.prev|date:"M Y" }}</a>
+  <h2 class="mb-0">{{ cal.title }}</h2>
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring year=cal.next.year month=cal.next.month %}">{{ cal.next|date:"M Y" }} <i class="bi bi-chevron-right"></i></a>
+</div>
+<div class="table-responsive"><table class="table table-bordered tf-cal mb-0">
+  <thead><tr>{% for d in cal.day_names %}<th>{{ d }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for week in cal.weeks %}<tr>{% for day in week %}
+    <td class="{% if not day.in_month %}other{% endif %} {% if day.is_today %}today{% endif %}">
+      <div class="day">{{ day.date.day }}</div>
+      {% for ev in day.events %}<a class="ev {{ ev.tone }}" href="{{ ev.url }}" title="{{ ev.title }}">{{ ev.title }}</a>{% endfor %}
+    </td>{% endfor %}</tr>{% endfor %}</tbody>
+</table></div>

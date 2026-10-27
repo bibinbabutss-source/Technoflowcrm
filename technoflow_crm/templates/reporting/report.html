@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'reporting:index' %}">Reports</a></li><li class="breadcrumb-item">{{ report.group }}</li><li class="breadcrumb-item active">{{ report.title }}</li></ol></nav>
+<div class="tf-page-head"><div><h1>{{ report.title }}</h1><p>{{ report.description }} · {{ subtitle }}</p></div>
+  <div class="tf-actions">{% if can_export %}<a class="btn btn-outline-secondary" href="{% querystring export='xlsx' %}"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a><a class="btn btn-outline-secondary" href="{% querystring export='csv' %}">CSV</a>{% endif %}<a class="btn btn-outline-secondary" href="{% querystring export='pdf' %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a></div></div>
+<form class="tf-filterbar mb-3" method="get" data-no-spinner>
+  {% if report.uses_dates %}<div><label class="form-label small" for="start">From</label><input class="form-control" type="date" id="start" name="start" value="{{ ctx.start|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small" for="end">To</label><input class="form-control" type="date" id="end" name="end" value="{{ ctx.end|date:'Y-m-d' }}"></div>{% endif %}
+  {% if employees %}<div><label class="form-label small" for="employee">Employee</label><select class="form-select" id="employee" name="employee"><option value="">All I can see</option>{% for e in employees %}<option value="{{ e.pk }}" {% if ctx.employee == e.pk %}selected{% endif %}>{{ e|person }}</option>{% endfor %}</select></div>{% endif %}
+  {% if customers %}<div><label class="form-label small" for="customer">Customer</label><select class="form-select" id="customer" name="customer"><option value="">All</option>{% for c in customers %}<option value="{{ c.pk }}" {% if ctx.customer.pk == c.pk %}selected{% endif %}>{{ c.company_name }}</option>{% endfor %}</select></div>{% endif %}
+  <div><button class="btn btn-outline-primary" type="submit">Run report</button></div></form>
+<div class="card">
+  {% if result.note %}<div class="card-body small text-secondary border-bottom">{{ result.note }}</div>{% endif %}
+  {% if rows_html %}<div class="table-responsive"><table class="table table-sm table-hover">
+    <thead><tr>{% for h in result.headers %}<th class="{% if forloop.counter0 in result.money_cols %}text-end{% endif %}">{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for row in rows_html %}<tr>{% for cell in row %}<td class="{% if forloop.counter0 in result.money_cols %}text-end text-nowrap{% endif %}">{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    {% if totals_html %}<tfoot><tr class="fw-semibold">{% for cell in totals_html %}<td class="{% if forloop.counter0 in result.money_cols %}text-end text-nowrap{% endif %}">{{ cell|default_if_none:"" }}</td>{% endfor %}</tr></tfoot>{% endif %}
+  </table></div>
+  {% else %}<div class="tf-empty"><i class="bi bi-bar-chart"></i>No data for these filters.</div>{% endif %}
+</div>
+{% endblock %}

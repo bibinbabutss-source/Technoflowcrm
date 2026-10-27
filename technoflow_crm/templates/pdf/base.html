@@ -1,0 +1,34 @@
+{% load static crm %}<!doctype html>
+<html><head><meta charset="utf-8"><title>{% block title %}{% endblock %}</title>
+<style>
+  @page { size: A4; margin: 1.6cm 1.4cm 2.0cm 1.4cm;
+          @frame footer { -pdf-frame-content: footer; bottom: 0.7cm; margin-left: 1.4cm; margin-right: 1.4cm; height: 1cm; } }
+  body { font-family: Helvetica; font-size: 9pt; color: #23262A; }
+  h1 { font-size: 16pt; color: #23262A; margin: 0 0 2pt 0; }
+  h2 { font-size: 10.5pt; color: #4F5A0C; margin: 10pt 0 3pt 0; border-bottom: 1px solid #C1CD23; padding-bottom: 2pt; }
+  .muted { color: #5F6062; }
+  table { width: 100%; }
+  table.lines { border-collapse: collapse; margin-top: 6pt; }
+  table.lines th { background-color: #E9EDB0; font-size: 8pt; text-align: left; padding: 4pt 3pt; border-bottom: 1px solid #A2AD18; }
+  table.lines td { padding: 4pt 3pt; border-bottom: 0.5px solid #E1E4E8; vertical-align: top; }
+  .r { text-align: right; }
+  .totals td { padding: 2pt 3pt; }
+  .grand td { font-size: 11pt; font-weight: bold; border-top: 1px solid #23262A; }
+  .box { border: 0.5px solid #E1E4E8; padding: 6pt; }
+  .draft { color: #B42318; font-size: 13pt; font-weight: bold; text-align: center; border: 2px solid #B42318; padding: 4pt; margin-bottom: 6pt; }
+  .footer { font-size: 7.5pt; color: #5F6062; text-align: center; }
+</style></head>
+<body>
+<table><tr>
+  <td style="width:55%"><img src="{% static 'img/technoflow-logo.png' %}" style="height:46pt"></td>
+  <td class="r muted" style="font-size:8pt">
+    <b style="color:#23262A">{{ company.legal_name|default:company.company_name }}</b><br>
+    {% if company.address %}{{ company.address|linebreaksbr }}<br>{% endif %}{{ company.city }}{% if company.country %}, {{ company.country }}{% endif %}<br>
+    {% if company.phone %}Tel {{ company.phone }} · {% endif %}{% if company.email %}{{ company.email }}{% endif %}<br>
+    {% if company.website %}{{ company.website }}<br>{% endif %}
+    {% if company.tax_registration_number %}TRN {{ company.tax_registration_number }}{% endif %}
+  </td></tr></table>
+<div style="height:8pt"></div>
+{% block content %}{% endblock %}
+<div id="footer" class="footer">{{ company.company_name }} · {% block footer %}{% endblock %} · Page <pdf:pagenumber> of <pdf:pagecount></div>
+</body></html>

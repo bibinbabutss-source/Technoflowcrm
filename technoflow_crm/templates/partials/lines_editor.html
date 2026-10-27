@@ -1,0 +1,17 @@
+{% load crm %}
+<div class="card mt-3" data-formset="{{ formset.prefix }}">
+  <div class="card-header d-flex justify-content-between align-items-center">Line items <button class="btn btn-sm btn-outline-primary" type="button" data-formset-add><i class="bi bi-plus-lg me-1"></i>Add line</button></div>
+  {{ formset.management_form }}
+  {% if formset.non_form_errors %}<div class="alert alert-danger m-3">{{ formset.non_form_errors }}</div>{% endif %}
+  <div class="table-responsive"><table class="table table-sm align-top mb-0">
+    <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Disc. %</th><th>Tax</th><th class="text-end">Net</th><th></th></tr></thead>
+    <tbody data-formset-body>{% for f in formset %}{% include "partials/line_row.html" %}{% endfor %}</tbody>
+    <tfoot>
+      <tr><td colspan="6" class="text-end">Subtotal (after line discounts)</td><td class="text-end" data-sum-subtotal>—</td><td></td></tr>
+      <tr><td colspan="6" class="text-end">Tax (before any overall discount)</td><td class="text-end" data-sum-tax>—</td><td></td></tr>
+      <tr class="fw-semibold"><td colspan="6" class="text-end">Estimated total</td><td class="text-end" data-sum-total>—</td><td></td></tr>
+    </tfoot>
+  </table></div>
+  <template>{% with f=formset.empty_form %}{% include "partials/line_row.html" %}{% endwith %}</template>
+  <div class="card-body small text-secondary border-top">This preview is for convenience. Amounts are recalculated by the server when you save, including the overall discount.</div>
+</div>

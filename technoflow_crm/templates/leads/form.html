@@ -1,0 +1,7 @@
+{% extends "crud/form.html" %}
+{% block form_top %}
+{% if form.duplicates %}
+<div class="alert alert-warning"><strong>Similar open leads</strong>
+  <ul class="mb-0 mt-1">{% for d in form.duplicates %}<li><a href="{{ d.get_absolute_url }}" target="_blank" rel="noopener">{{ d.code }} {{ d.title }}</a> — {{ d.company_name }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% endblock %}

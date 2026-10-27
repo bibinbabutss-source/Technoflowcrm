@@ -1,0 +1,37 @@
+# ---- secrets: never commit ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- local databases and backups ----
+db.sqlite3
+*.sqlite3
+*.dump
+*.sql.gz
+backups/
+
+# ---- generated files ----
+__pycache__/
+*.pyc
+staticfiles/
+logs/
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---- uploaded documents (stored outside Git) ----
+media/private/*
+!media/private/.gitkeep
+
+# ---- virtual environments and editors ----
+.venv/
+venv/
+env/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.zip

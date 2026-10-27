@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Approvals & reminders{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0"><div class="card-body">
+<form method="post" novalidate>{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="row">
+    <div class="col-lg-6">
+      <h2 class="mb-2">Quotation approval</h2>
+      <p class="small text-secondary">A submitted quotation is approved automatically only when its total is within the threshold below <em>and</em> within the submitter's role limits and the discount limit. Otherwise a Director (or another approver) must approve it. Nobody can approve their own quotation.</p>
+      {% with field=form.approval_threshold %}{% include "partials/field.html" %}{% endwith %}{% with field=form.discount_approval_limit %}{% include "partials/field.html" %}{% endwith %}{% with field=form.quotation_expiry_warning_days %}{% include "partials/field.html" %}{% endwith %}
+      <h2 class="mb-2 mt-3">Performance ratings</h2>
+      <div class="row"><div class="col-4">{% with field=form.rating_excellent %}{% include "partials/field.html" %}{% endwith %}</div><div class="col-4">{% with field=form.rating_good %}{% include "partials/field.html" %}{% endwith %}</div><div class="col-4">{% with field=form.rating_satisfactory %}{% include "partials/field.html" %}{% endwith %}</div></div>
+    </div>
+    <div class="col-lg-6">
+      <h2 class="mb-2">Reminders</h2>
+      <div class="form-check mb-3">{{ form.email_notifications_enabled }} <label class="form-check-label" for="{{ form.email_notifications_enabled.id_for_label }}">{{ form.email_notifications_enabled.label }}</label>
+        <div class="form-text">{{ form.email_notifications_enabled.help_text }} Email also needs the EMAIL_* server settings (see the Admin Guide).</div></div>
+      {% with field=form.visit_reminder_days %}{% include "partials/field.html" %}{% endwith %}{% with field=form.task_reminder_days %}{% include "partials/field.html" %}{% endwith %}{% with field=form.overdue_reminder_days %}{% include "partials/field.html" %}{% endwith %}
+    </div>
+  </div>
+  <button class="btn btn-primary" type="submit">Save settings</button>
+</form></div></div>
+<div class="card mt-3"><div class="card-header d-flex justify-content-between align-items-center">Daily reminder job
+  <form method="post" action="{% url 'core:run_reminders' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-play me-1"></i>Run reminders now</button></form></div>
+  <div class="card-body small">
+    <p class="text-secondary">Reminders (upcoming visits, tasks due, overdue invoices, expiring quotations, idle leads) run once a day: automatically on the first dashboard visit of the day, or from a scheduled <code>python manage.py send_reminders</code>. Each reminder is sent once (no duplicates).</p>
+    {% for j in jobs %}<div><strong>{{ j.name }}</strong>: last run {{ j.last_run_at|date:"d-M-Y H:i"|default:"never" }} — {{ j.last_result|default:"—" }}</div>{% empty %}<div>Not run yet.</div>{% endfor %}
+  </div></div>
+{% endblock %}

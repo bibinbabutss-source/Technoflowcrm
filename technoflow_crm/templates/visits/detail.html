@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ visit.code }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'visits:list' %}">Visits</a></li><li class="breadcrumb-item active">{{ visit.code }}</li></ol></nav>
+<div class="tf-page-head">
+  <div><h1>Visit — {{ visit.customer.company_name }} <span class="badge-status {% if visit.is_missed %}badge-danger{% elif visit.status == 'completed' %}badge-active{% elif visit.status == 'cancelled' %}badge-inactive{% else %}badge-info{% endif %} align-middle">{% if visit.is_missed %}Missed{% else %}{{ visit.get_status_display }}{% endif %}</span></h1>
+    <p>{{ visit.code }} · {{ visit.visit_date|date:"l d-M-Y" }} {{ visit.start_time|time:"H:i" }}–{{ visit.end_time|time:"H:i" }} · {{ visit.location }}</p></div>
+  <div class="tf-actions">
+    {% if can_edit %}
+      <a class="btn btn-primary" href="{% url 'visits:complete' visit.pk %}"><i class="bi bi-check2-circle me-1"></i>Complete visit</a>
+      {% if visit.status != 'confirmed' %}<form method="post" action="{% url 'visits:confirm' visit.pk %}">{% csrf_token %}<button class="btn btn-outline-primary" type="submit">Mark confirmed</button></form>{% endif %}
+      <a class="btn btn-outline-secondary" href="{% url 'visits:reschedule' visit.pk %}">Reschedule</a>
+      <a class="btn btn-outline-secondary" href="{% url 'visits:edit' visit.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
+      <a class="btn btn-outline-danger" href="{% url 'visits:cancel' visit.pk %}">Cancel visit</a>
+    {% endif %}
+    {% if "tasks.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'tasks:create' %}?visit={{ visit.pk }}&customer={{ visit.customer_id }}"><i class="bi bi-check2-square me-1"></i>Add task</a>{% endif %}
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header">Visit details</div><div class="card-body"><dl class="row mb-0 small tf-dl">
+      <dt class="col-5">Customer</dt><dd class="col-7"><a href="{{ visit.customer.get_absolute_url }}">{{ visit.customer }}</a></dd>
+      <dt class="col-5">Contact</dt><dd class="col-7">{{ visit.contact_person|default:"—" }}</dd>
+      <dt class="col-5">Site / project</dt><dd class="col-7">{{ visit.site_name|default:"—" }}</dd>
+      <dt class="col-5">Purpose</dt><dd class="col-7">{{ visit.purpose|default:"—" }}</dd>
+      <dt class="col-5">Priority</dt><dd class="col-7">{{ visit.get_priority_display }}</dd>
+      <dt class="col-5">Employee</dt><dd class="col-7">{{ visit.assigned_to|person }}</dd>
+      {% if visit.opportunity %}<dt class="col-5">Opportunity</dt><dd class="col-7"><a href="{{ visit.opportunity.get_absolute_url }}">{{ visit.opportunity }}</a></dd>{% endif %}
+      {% if visit.lead %}<dt class="col-5">Lead</dt><dd class="col-7"><a href="{{ visit.lead.get_absolute_url }}">{{ visit.lead }}</a></dd>{% endif %}
+      {% if visit.previous_date %}<dt class="col-5">Originally</dt><dd class="col-7">{{ visit.previous_date|date:"d-M-Y" }}</dd>{% endif %}
+      {% if visit.cancel_reason %}<dt class="col-5">Cancelled because</dt><dd class="col-7">{{ visit.cancel_reason }}</dd>{% endif %}
+    </dl>{% if visit.agenda %}<hr><div class="small"><div class="text-secondary mb-1">Agenda</div>{{ visit.agenda|linebreaksbr }}</div>{% endif %}</div></div>
+    {% include "documents/_panel.html" with target=visit %}
+  </div>
+  <div class="col-lg-7">
+    {% if visit.status == 'completed' %}
+    <div class="card mb-3"><div class="card-header">Meeting report <span class="small fw-normal text-secondary">completed {{ visit.completed_at|date:"d-M-Y H:i" }} by {{ visit.completed_by|person }}</span></div><div class="card-body small">
+      <div class="text-secondary">Meeting notes</div><p>{{ visit.meeting_notes|linebreaksbr }}</p>
+      {% if visit.customer_requirements %}<div class="text-secondary">Customer requirements</div><p>{{ visit.customer_requirements|linebreaksbr }}</p>{% endif %}
+      {% if visit.agreed_actions %}<div class="text-secondary">Agreed actions</div><p>{{ visit.agreed_actions|linebreaksbr }}</p>{% endif %}
+      {% if visit.key_developments %}<div class="text-secondary">Key developments</div><p>{{ visit.key_developments }}</p>{% endif %}
+      {% if visit.potential_value %}<div class="text-secondary">Potential value</div><p>{{ visit.potential_value|money:"AED" }}</p>{% endif %}
+      <div class="text-secondary">Next follow-up</div><p class="mb-0">{{ visit.next_follow_up_date|date:"d-M-Y"|default:"—" }}{% if visit.next_follow_up_owner %} · {{ visit.next_follow_up_owner|person }}{% endif %}</p>
+    </div></div>
+    {% endif %}
+    {% if tasks %}<div class="card mb-3"><div class="card-header">Follow-up tasks</div><ul class="list-group list-group-flush">{% for t in tasks %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ t.get_absolute_url }}">{{ t.code }} {{ t.title }}</a><span>{{ t.assigned_to|person }} · due {{ t.due_date|date:"d-M-Y" }} · {{ t.get_status_display }}</span></li>{% endfor %}</ul></div>{% endif %}
+    <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+  </div>
+</div>
+{% endblock %}

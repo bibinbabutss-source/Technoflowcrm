@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Tax rates{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0"><div class="card-body"><div class="row g-4">
+  <div class="col-lg-7"><h2 class="mb-3">Tax rates</h2>
+    <div class="table-responsive"><table class="table">
+      <thead><tr><th>Name</th><th class="text-end">Rate</th><th>Default</th><th>Status</th><th></th></tr></thead>
+      <tbody>{% for r in rates %}<tr><td>{{ r.name }}</td><td class="text-end">{{ r.rate }}%</td>
+        <td>{% if r.is_default %}<span class="badge-status badge-success">Default</span>{% endif %}</td>
+        <td>{% if r.is_active %}Active{% else %}<span class="text-secondary">Inactive</span>{% endif %}</td>
+        <td class="text-end"><a href="{% url 'core:tax_rate_edit' r.pk %}">Edit</a></td></tr>
+      {% empty %}<tr><td colspan="5" class="text-secondary">No tax rates.</td></tr>{% endfor %}</tbody></table></div>
+    <p class="small text-secondary">Each quotation, order and invoice line stores the rate used, so changing a rate here never changes existing documents.</p></div>
+  <div class="col-lg-5"><h2 class="mb-3">{% if obj %}Edit {{ obj.name }}{% else %}Add a tax rate{% endif %}</h2>
+    <form method="post" novalidate>{% csrf_token %}{% include "partials/form_errors.html" %}
+      {% for field in form %}{% include "partials/field.html" %}{% endfor %}
+      <button class="btn btn-primary" type="submit">Save</button>{% if obj %} <a class="btn btn-link" href="{% url 'core:tax_rates' %}">Cancel</a>{% endif %}</form></div>
+</div></div></div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Create sales order{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'quotations:list' %}">Quotations</a></li><li class="breadcrumb-item"><a href="{{ q.get_absolute_url }}">{{ q.number }}</a></li><li class="breadcrumb-item active">Create order</li></ol></nav>
+<div class="tf-page-head"><div><h1>Create sales order</h1><p>From {{ q.number }} Rev {{ rev.version }}, accepted {{ rev.customer_response_at|date:"d-M-Y" }} by {{ rev.accepted_by_name }}. Lines and amounts are copied; nothing is re-typed.</p></div></div>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card"><div class="card-header">Order</div><div class="card-body">
+    <form method="post" novalidate>{% csrf_token %}
+      {% include "partials/form_errors.html" %}
+      {% for field in form %}{% include "partials/field.html" %}{% endfor %}
+      <p class="small text-secondary">The order is created as a draft. A Sales Director or the Administrator confirms it; then Accounts are notified for invoicing.</p>
+      <button class="btn btn-primary" type="submit">Create order</button> <a class="btn btn-outline-secondary" href="{{ q.get_absolute_url }}">Cancel</a>
+    </form></div></div></div>
+  <div class="col-lg-7"><div class="card"><div class="card-header">Accepted quotation — {{ q.customer.company_name }}</div>
+    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Description</th><th class="text-end">Qty</th><th class="text-end">Net</th></tr></thead>
+    <tbody>{% for ln in rev.lines.all %}<tr><td>{{ ln.description|truncatechars:80 }}</td><td class="text-end">{{ ln.quantity.normalize }} {{ ln.unit }}</td><td class="text-end">{{ ln.line_net|money }}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr><td colspan="2" class="text-end">Value excl. VAT</td><td class="text-end">{{ rev.taxable_amount|money }}</td></tr><tr><td colspan="2" class="text-end">VAT</td><td class="text-end">{{ rev.tax_amount|money }}</td></tr><tr class="fw-semibold"><td colspan="2" class="text-end">Total {{ rev.currency }}</td><td class="text-end">{{ rev.grand_total|money }}</td></tr></tfoot></table></div></div></div>
+</div>
+{% endblock %}

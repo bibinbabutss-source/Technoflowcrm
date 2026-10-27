@@ -1,0 +1,13 @@
+{% extends "auth_base.html" %}
+{% block title %}Two-step sign-in{% endblock %}
+{% block content %}
+<h1 class="mb-1">Enter your code</h1>
+<p class="text-secondary mb-4">Open your authenticator app and enter the 6-digit code for the CRM.</p>
+<form method="post" novalidate>{% csrf_token %}
+  {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
+  <div class="mb-3"><label class="form-label" for="id_code">Authenticator code</label>
+    <input class="form-control form-control-lg text-center" id="id_code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" autofocus required></div>
+  <button class="btn btn-primary w-100 py-2" type="submit">Verify and sign in</button>
+</form>
+<div class="text-center mt-3 small"><a href="{% url 'accounts:login' %}">Start again</a> · Lost your phone? Ask the System Administrator to reset two-step sign-in.</div>
+{% endblock %}

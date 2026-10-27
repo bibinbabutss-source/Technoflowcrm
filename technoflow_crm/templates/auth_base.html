@@ -1,0 +1,35 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sign in{% endblock %} · {{ company.company_name }} CRM</title>
+  <link rel="icon" href="{% static 'img/technoflow-logo.png' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/technoflow.css' %}">
+</head>
+<body>
+<div class="tf-auth">
+  <section class="tf-auth-brand">
+    <div><span class="tf-auth-logo-card"><img src="{% static 'img/technoflow-logo.png' %}" alt="{{ company.company_name }}" height="56"></span></div>
+    <div>
+      <h2>Customers, pipeline and collections in <span class="accent">one place</span>.</h2>
+      <p class="mt-3 mb-0" style="max-width:24rem;color:#B7BBBF">{{ company.company_name }} customer relationship management system.</p>
+    </div>
+    <div class="small" style="color:#9DA2A7">&copy; {% now "Y" %} {{ company.company_name }}{% if company.website %} · {{ company.website|cut:"https://"|cut:"/" }}{% endif %}</div>
+  </section>
+  <section class="tf-auth-form">
+    <div class="inner">
+      <div class="d-lg-none text-center mb-4"><img src="{% static 'img/technoflow-logo.png' %}" alt="{{ company.company_name }}" height="56"></div>
+      {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </div>
+  </section>
+</div>
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/technoflow.js' %}"></script>
+</body>
+</html>

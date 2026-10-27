@@ -1,0 +1,5 @@
+<form method="get" class="d-flex gap-2 align-items-end" data-no-spinner>
+  {% for k, v in request.GET.items %}{% if k != "employee" %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+  <div><label class="form-label small" for="employee">Employee</label><select class="form-select" id="employee" name="employee" onchange="this.form.submit()"><option value="">All I can see</option>{% for u in employees %}<option value="{{ u.pk }}" {% if employee == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select></div>
+  <noscript><button class="btn btn-outline-primary" type="submit">Apply</button></noscript>
+</form>

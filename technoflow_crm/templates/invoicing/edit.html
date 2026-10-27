@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ inv.display_number }}{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Edit draft invoice</h1><p>{{ inv.customer.company_name }} · order {{ inv.order.number }}. Issuing is blocked if it would bill more than the order total.</p></div></div>
+<form method="post" novalidate>{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="card"><div class="card-body"><div class="row">{% for field in form %}<div class="col-md-4">{% include "partials/field.html" %}</div>{% endfor %}</div></div></div>
+  {% include "partials/lines_editor.html" %}
+  <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit">Save draft</button><a class="btn btn-outline-secondary" href="{{ inv.get_absolute_url }}">Cancel</a></div>
+</form>
+{% endblock %}

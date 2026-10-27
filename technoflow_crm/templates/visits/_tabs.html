@@ -1,0 +1,1 @@
+<div class="btn-group">{% for label, url, icon, active in tabs %}<a class="btn btn-outline-secondary {% if active %}active{% endif %}" href="{{ url }}"><i class="bi bi-{{ icon }} me-1"></i>{{ label }}</a>{% endfor %}</div>

@@ -1,0 +1,69 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}User management{% endblock %}
+{% block content %}
+<div class="tf-page-head">
+  <div><h1>User management</h1><p>Employee accounts and role limits. Deactivated accounts keep all their history.</p></div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'accounts:login_history' %}"><i class="bi bi-clock-history me-1"></i>Login history</a>
+    <a class="btn btn-primary" href="{% url 'accounts:user_create' %}"><i class="bi bi-person-plus me-1"></i>Add employee</a>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% for r in roles %}
+    <a class="badge-status {% if r.active >= r.max_accounts %}badge-warning{% else %}badge-inactive{% endif %} text-decoration-none" href="{% querystring role=r.pk page=None %}">
+      {{ r.name }}: {{ r.active }}/{{ r.max_accounts }}
+    </a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-body border-bottom">
+    <form class="tf-filterbar" method="get" data-no-spinner>
+      <div><label class="form-label small" for="q">Search</label>
+        <input class="form-control" id="q" name="q" value="{{ q }}" placeholder="Name, email, employee ID"></div>
+      <div><label class="form-label small" for="role">Role</label>
+        <select class="form-select" id="role" name="role"><option value="">All roles</option>
+          {% for r in roles %}<option value="{{ r.pk }}" {% if request.GET.role == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+        </select></div>
+      <div><label class="form-label small" for="status">Status</label>
+        <select class="form-select" id="status" name="status">
+          <option value="active" {% if status == "active" %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == "inactive" %}selected{% endif %}>Inactive</option>
+          <option value="all" {% if status == "all" %}selected{% endif %}>All</option>
+        </select></div>
+      <div><button class="btn btn-outline-primary" type="submit">Apply</button>
+        <a class="btn btn-link" href="{% url 'accounts:user_list' %}">Clear</a></div>
+    </form>
+  </div>
+  {% if page.object_list %}
+  <div class="table-responsive"><table class="table table-hover">
+    <thead><tr>
+      <th><a class="sort-link {% if sort == 'id' %}active{% endif %}" href="{% querystring sort='id' page=None %}">Employee ID</a></th>
+      <th><a class="sort-link {% if sort == 'name' %}active{% endif %}" href="{% querystring sort='name' page=None %}">Name</a></th>
+      <th>Work email</th>
+      <th><a class="sort-link {% if sort == 'role' %}active{% endif %}" href="{% querystring sort='role' page=None %}">Role</a></th>
+      <th>Department</th><th>Status</th>
+      <th><a class="sort-link {% if sort == 'login' %}active{% endif %}" href="{% querystring sort='login' page=None %}">Last login</a></th>
+    </tr></thead>
+    <tbody>
+    {% for p in page %}
+      <tr>
+        <td>{{ p.employee_id }}</td>
+        <td><a href="{% url 'accounts:user_detail' p.pk %}" class="fw-semibold">{{ p.full_name }}</a><div class="small text-secondary">{{ p.user.username }}</div></td>
+        <td>{{ p.user.email }}</td>
+        <td>{{ p.role.name }}</td>
+        <td>{{ p.department|default:"—" }}</td>
+        <td>{% if p.user.is_active %}<span class="badge-status badge-active">Active</span>{% else %}<span class="badge-status badge-inactive">Inactive</span>{% endif %}
+            {% if p.must_change_password and p.user.is_active %}<span class="badge-status badge-warning ms-1">Temp. password</span>{% endif %}</td>
+        <td class="text-nowrap">{{ p.user.last_login|date:"d-M-Y H:i"|default:"Never" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="tf-empty"><i class="bi bi-people"></i>No employees match these filters.</div>
+  {% endif %}
+</div>
+{% endblock %}

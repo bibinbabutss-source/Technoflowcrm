@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Targets & KPIs{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Targets & KPIs</h1><p>{% if subject %}{{ subject|person }}{% else %}Company-wide{% endif %} · {{ start|date:"d M Y" }} – {{ end|date:"d M Y" }}</p></div>
+  <div class="tf-actions"><a class="btn btn-outline-secondary" href="{% url 'performance:targets' %}"><i class="bi bi-list-ul me-1"></i>All targets</a>
+    {% if can_manage %}<a class="btn btn-outline-secondary" href="{% url 'performance:kpis' %}"><i class="bi bi-sliders me-1"></i>KPI definitions</a><a class="btn btn-primary" href="{% url 'performance:set_targets' %}"><i class="bi bi-bullseye me-1"></i>Set targets</a>{% endif %}</div></div>
+<form class="tf-filterbar mb-3" method="get" data-no-spinner>
+  <div><label class="form-label small" for="period">Period</label><select class="form-select" id="period" name="period">{% for k, v in periods %}<option value="{{ k }}" {% if ptype == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+  <div><label class="form-label small" for="date">Containing date</label><input class="form-control" type="date" id="date" name="date" value="{{ ref|date:'Y-m-d' }}"></div>
+  {% if team %}<div><label class="form-label small" for="employee">Employee</label><select class="form-select" id="employee" name="employee"><option value="0" {% if employee_id == 0 or employee_id is None %}selected{% endif %}>Company-wide</option>{% for e in employees %}<option value="{{ e.pk }}" {% if employee_id == e.pk %}selected{% endif %}>{{ e|person }}</option>{% endfor %}</select></div>{% endif %}
+  <div><button class="btn btn-outline-primary" type="submit">Show</button></div></form>
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-lg-3"><div class="card tf-stat"><div class="label">Overall KPI score</div><div class="value">{% if card.overall is not None %}{{ card.overall }}<span class="fs-6 text-secondary"> / 100</span>{% else %}—{% endif %}</div><div class="sub">{{ card.rating }}</div></div></div>
+  <div class="col-sm-6 col-lg-9"><div class="card h-100"><div class="card-body small text-secondary">
+    Achievement % = actual ÷ target × 100. Each KPI's score is capped at 100; the overall score is the weighted average of KPIs that have a target. Quotations, orders, invoices and collections are measured separately and never added together. Previous period: {{ card.previous_start|date:"d M Y" }} – {{ card.previous_end|date:"d M Y" }}.</div></div></div>
+</div>
+<div class="card mb-3"><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>KPI</th><th class="text-end">Target</th><th class="text-end">Actual</th><th class="text-end">Remaining</th><th style="min-width:160px">Achievement</th><th class="text-end">Weight</th><th class="text-end">Previous period</th><th class="text-end">Change</th></tr></thead>
+  <tbody>{% for r in card.rows %}<tr>
+    <td>{{ r.kpi.name }}<div class="small text-secondary">{{ r.kpi.description }}</div></td>
+    <td class="text-end">{% include "performance/_value.html" with v=r.target unit=r.kpi.unit %}</td>
+    <td class="text-end">{% include "performance/_value.html" with v=r.actual unit=r.kpi.unit %}</td>
+    <td class="text-end">{% include "performance/_value.html" with v=r.remaining unit=r.kpi.unit %}</td>
+    <td>{% if r.pct is None %}<span class="text-secondary small">No target</span>{% else %}<div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1" style="height:8px"><div class="progress-bar" style="width:{% if r.pct > 100 %}100{% else %}{{ r.pct|floatformat:0 }}{% endif %}%;background:{% if r.pct >= 100 %}#1E6B34{% elif r.pct >= 60 %}var(--tf-olive){% else %}#B42318{% endif %}"></div></div><span class="small">{{ r.pct|pct }}</span></div>{% endif %}</td>
+    <td class="text-end">{{ r.kpi.weight.normalize }}%</td>
+    <td class="text-end">{% include "performance/_value.html" with v=r.previous unit=r.kpi.unit %}</td>
+    <td class="text-end">{% if r.change is None %}—{% elif r.change > 0 %}<span class="text-success">▲ {% include "performance/_value.html" with v=r.change unit=r.kpi.unit %}</span>{% elif r.change < 0 %}<span class="text-danger">▼ {% include "performance/_value.html" with v=r.change unit=r.kpi.unit %}</span>{% else %}0{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div></div>
+{% if ranking %}<div class="card"><div class="card-header">Team ranking — {{ start|date:"M Y" }} {{ ptype }}</div><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>#</th><th>Employee</th><th>Role</th><th class="text-end">Overall score</th><th>Rating</th><th class="text-end">Orders booked (excl. VAT)</th><th></th></tr></thead>
+  <tbody>{% for r in ranking %}<tr><td>{{ r.rank }}</td><td>{{ r.user|person }}</td><td>{{ r.user.profile.role.name }}</td><td class="text-end">{{ r.overall|default_if_none:"—" }}</td><td>{{ r.rating }}</td><td class="text-end">{{ r.booked|money }}</td><td class="text-end"><a href="?period={{ ptype }}&date={{ ref|date:'Y-m-d' }}&employee={{ r.user.pk }}">Scorecard</a></td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+{% endblock %}

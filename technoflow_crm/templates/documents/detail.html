@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ doc.title }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'documents:list' %}">Documents</a></li><li class="breadcrumb-item active">{{ doc.title }}</li></ol></nav>
+<div class="tf-page-head"><div><h1><i class="bi bi-{{ doc.icon }} text-secondary"></i> {{ doc.title }} <small class="text-secondary">v{{ doc.version }}</small>
+  {% if not doc.is_current %}<span class="badge-status badge-warning align-middle">Older version</span>{% endif %}{% if doc.is_archived %}<span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
+  <p>{{ target_label }}: {% if doc.target %}<a href="{{ doc.target.get_absolute_url }}">{{ doc.target }}</a>{% else %}—{% endif %}</p></div>
+  <div class="tf-actions">
+    <a class="btn btn-primary" href="{% url 'documents:download' doc.pk %}"><i class="bi bi-download me-1"></i>Download</a>
+    {% if can_delete %}<form method="post" action="{% url 'documents:archive' doc.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">{% if doc.is_archived %}Restore{% else %}Archive{% endif %}</button></form>
+      {% if doc.is_archived %}<form method="post" action="{% url 'documents:delete' doc.pk %}" data-confirm="Delete {{ doc.original_name }} permanently? The file is removed from storage.">{% csrf_token %}<button class="btn btn-outline-danger" type="submit">Delete permanently</button></form>{% endif %}{% endif %}
+  </div></div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card mb-3"><div class="card-header">File</div><div class="card-body"><dl class="row mb-0 small tf-dl">
+    <dt class="col-5">Original name</dt><dd class="col-7 text-break">{{ doc.original_name }}</dd>
+    <dt class="col-5">Type / size</dt><dd class="col-7">{{ doc.extension|upper }} · {{ doc.size|filesizeformat }}</dd>
+    <dt class="col-5">Category</dt><dd class="col-7">{{ doc.category|default:"—" }}</dd>
+    <dt class="col-5">Uploaded</dt><dd class="col-7">{{ doc.created_at|date:"d-M-Y H:i" }} by {{ doc.uploaded_by|person }}</dd>
+    <dt class="col-5">SHA-256</dt><dd class="col-7 text-break small text-secondary">{{ doc.sha256 }}</dd>
+    {% if doc.description %}<dt class="col-5">Description</dt><dd class="col-7">{{ doc.description }}</dd>{% endif %}
+  </dl></div></div>
+  {% if replace_form %}<div class="card"><div class="card-header">Upload a new version</div><div class="card-body">
+    <form method="post" action="{% url 'documents:upload' %}" enctype="multipart/form-data" novalidate>{% csrf_token %}
+      <input type="hidden" name="target_type" value="{{ doc.target_type.app_label }}.{{ doc.target_type.model }}"><input type="hidden" name="target_id" value="{{ doc.target_id }}">
+      <input type="hidden" name="replaces" value="{{ doc.pk }}"><input type="hidden" name="next" value="{% url 'documents:list' %}">
+      <div class="mb-2"><input class="form-control" type="file" name="file" required aria-label="New version"></div>
+      <button class="btn btn-outline-primary" type="submit">Upload new version</button></form></div></div>{% endif %}</div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Versions</div><ul class="list-group list-group-flush">
+    {% for n in newer %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ n.get_absolute_url }}">v{{ n.version }} {{ n.original_name }}</a><span>{{ n.created_at|date:"d-M-Y" }}</span></li>{% endfor %}
+    <li class="list-group-item small d-flex justify-content-between bg-light"><strong>v{{ doc.version }} {{ doc.original_name }}</strong><span>{{ doc.created_at|date:"d-M-Y" }}</span></li>
+    {% for o in older %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ o.get_absolute_url }}">v{{ o.version }} {{ o.original_name }}</a><span>{{ o.created_at|date:"d-M-Y" }}</span></li>{% endfor %}
+  </ul></div></div>
+</div>
+{% endblock %}

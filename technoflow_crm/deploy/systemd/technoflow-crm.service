@@ -1,0 +1,23 @@
+# Gunicorn service for Technoflow CRM.
+# Copy to /etc/systemd/system/, then: sudo systemctl daemon-reload && sudo systemctl enable --now technoflow-crm
+[Unit]
+Description=Technoflow CRM (Gunicorn)
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=technoflow
+Group=www-data
+WorkingDirectory=/srv/technoflow_crm
+EnvironmentFile=/srv/technoflow_crm/.env
+RuntimeDirectory=technoflow-crm
+ExecStart=/srv/technoflow_crm/.venv/bin/gunicorn config.wsgi:application \
+    --bind unix:/run/technoflow-crm/gunicorn.sock --workers 3 --timeout 60 \
+    --access-logfile /var/log/technoflow_crm/access.log --error-logfile /var/log/technoflow_crm/gunicorn.log
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Drop-down lists{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0"><div class="card-body">
+  <div class="row g-4">
+    <div class="col-md-4 col-lg-3">
+      <div class="list-group">{% for key, label in categories %}
+        <a class="list-group-item list-group-item-action {% if key == category %}active bg-light text-dark fw-semibold border-start border-4{% endif %}" style="{% if key == category %}border-left-color:var(--tf-green)!important{% endif %}" href="?category={{ key }}">{{ label }}</a>{% endfor %}</div>
+    </div>
+    <div class="col-md-8 col-lg-9">
+      {% if values %}
+      <div class="table-responsive mb-4"><table class="table table-hover">
+        <thead><tr><th>Value</th><th>Order</th><th>Status</th><th></th></tr></thead>
+        <tbody>{% for v in values %}<tr><td>{{ v.value }}</td><td>{{ v.sort_order }}</td>
+          <td>{% if v.is_active %}<span class="badge-status badge-active">In use</span>{% else %}<span class="badge-status badge-inactive">Hidden</span>{% endif %}</td>
+          <td class="text-end"><form method="post" action="{% url 'core:lookup_toggle' v.pk %}" class="d-inline" data-no-spinner>{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary" type="submit">{% if v.is_active %}Hide{% else %}Show{% endif %}</button></form></td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<div class="tf-empty"><i class="bi bi-list-ul"></i>No values in this list yet.</div>{% endif %}
+      <h3 class="mb-2">Add a value</h3>
+      {% include "partials/form_errors.html" %}
+      <form method="post" class="row g-2 align-items-start" novalidate>{% csrf_token %}
+        <input type="hidden" name="category" value="{{ category }}"><input type="hidden" name="is_active" value="on">
+        <div class="col-sm-6"><input class="form-control" name="value" placeholder="New value" value="{{ form.value.value|default:'' }}" required>{{ form.value.errors }}</div>
+        <div class="col-sm-2"><input class="form-control" name="sort_order" type="number" min="0" max="999" value="{{ values|length }}" aria-label="Order">{{ form.sort_order.errors }}</div>
+        <div class="col-sm-4"><button class="btn btn-primary" type="submit">Add</button></div>
+      </form>
+      <p class="small text-secondary mt-3 mb-0">Values are hidden rather than deleted, so existing records keep their original value.</p>
+    </div>
+  </div>
+</div></div>
+{% endblock %}

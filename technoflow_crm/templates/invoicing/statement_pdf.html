@@ -1,0 +1,14 @@
+{% extends "pdf/base.html" %}{% load crm %}
+{% block title %}Statement of account{% endblock %}
+{% block content %}
+<h1>STATEMENT OF ACCOUNT</h1>
+<div class="muted">Period {{ start|date:"d-M-Y" }} to {{ end|date:"d-M-Y" }} · printed {% now "d-M-Y" %}</div>
+<div class="box" style="margin-top:8pt"><b>{{ customer.company_name }}</b> ({{ customer.code }})<br>{% if customer.billing_address %}{{ customer.billing_address|linebreaksbr }}<br>{% endif %}{{ customer.city }}{% if customer.trn %}<br>TRN {{ customer.trn }}{% endif %}</div>
+{% include "invoicing/_statement_table.html" with pdf=True %}
+<table class="totals" style="margin-top:8pt"><tr><td style="width:55%"></td><td><table>
+  <tr class="grand"><td>Balance due</td><td class="r">{{ closing|money }}</td></tr>
+  {% if unallocated %}<tr><td>Unallocated credit included</td><td class="r">{{ unallocated|money }}</td></tr>{% endif %}</table></td></tr></table>
+{% if open_items %}<h2>Open invoices</h2><table class="lines"><thead><tr><th>Invoice</th><th>Date</th><th>Due</th><th class="r">Total</th><th class="r">Outstanding</th></tr></thead>
+<tbody>{% for i in open_items %}<tr><td>{{ i.number }}</td><td>{{ i.invoice_date|date:"d-M-Y" }}</td><td>{{ i.due_date|date:"d-M-Y" }}{% if i.is_overdue %} (overdue){% endif %}</td><td class="r">{{ i.total|money }}</td><td class="r">{{ i.outstanding|money }}</td></tr>{% endfor %}</tbody></table>{% endif %}
+{% endblock %}
+{% block footer %}Statement {{ customer.code }}{% endblock %}

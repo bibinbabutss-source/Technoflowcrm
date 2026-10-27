@@ -1,0 +1,19 @@
+{% load crm %}
+<div class="tf-kanban" data-move-url="{{ move_url }}">
+  {% for col in columns %}
+  <section class="tf-kcol" data-stage="{{ col.stage.pk }}" aria-label="{{ col.stage.name }}">
+    <div class="tf-kcol-head"><span>{{ col.stage.name }} <span class="sub">({{ col.items|length }})</span></span><span class="sub">{{ col.total|money }}</span></div>
+    {% for item in col.items %}
+    <article class="tf-kcard" draggable="{% if can_move %}true{% else %}false{% endif %}" data-id="{{ item.pk }}">
+      <a href="{{ item.get_absolute_url }}">{{ item.kanban_title }}</a>
+      <div class="meta">{{ item.kanban_subtitle }}</div>
+      <div class="meta d-flex justify-content-between"><span>{{ item.kanban_value|money }}</span><span>{{ item.kanban_owner|person }}</span></div>
+      {% if can_move %}<select class="form-select form-select-sm" data-move="{{ item.pk }}" aria-label="Move {{ item.kanban_title }} to stage">
+        <option value="">Move to…</option>{% for s in stages %}{% if s.pk != col.stage.pk %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endif %}{% endfor %}
+      </select>{% endif %}
+    </article>
+    {% empty %}<div class="small text-secondary px-1">No records</div>
+    {% endfor %}
+  </section>
+  {% endfor %}
+</div>

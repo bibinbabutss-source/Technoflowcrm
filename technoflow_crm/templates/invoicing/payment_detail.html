@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ p.number }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'invoicing:payments' %}">Payments</a></li><li class="breadcrumb-item active">{{ p.number }}</li></ol></nav>
+<div class="tf-page-head"><div><h1>{% if p.is_reversal %}Reversal {% else %}Payment {% endif %}{{ p.number }}
+  {% if p.is_reversal %}<span class="badge-status badge-danger align-middle">Reversal of {{ p.reverses.number }}</span>{% elif p.is_reversed %}<span class="badge-status badge-inactive align-middle">Reversed by {{ p.reversed_by.number }}</span>{% endif %}</h1>
+  <p><a href="{{ p.customer.get_absolute_url }}">{{ p.customer.company_name }}</a> · {{ p.payment_date|date:"d-M-Y" }} · {{ p.get_method_display }}{% if p.reference %} · ref {{ p.reference }}{% endif %}</p></div></div>
+<div class="row g-3 mb-3">
+  <div class="col-4"><div class="card tf-stat"><div class="label">Amount</div><div class="value fs-5">{{ p.currency }} {{ p.amount|money }}</div></div></div>
+  <div class="col-4"><div class="card tf-stat"><div class="label">Allocated</div><div class="value fs-5">{{ p.allocated|money }}</div></div></div>
+  <div class="col-4"><div class="card tf-stat"><div class="label">Unallocated credit</div><div class="value fs-5">{{ p.unallocated|money }}</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header">Allocations</div>
+      {% if allocations %}<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Invoice</th><th>When</th><th class="text-end">Amount</th><th class="text-end">Invoice outstanding now</th></tr></thead>
+      <tbody>{% for a in allocations %}<tr><td><a href="{{ a.invoice.get_absolute_url }}">{{ a.invoice.display_number }}</a></td><td>{{ a.created_at|date:"d-M-Y H:i" }}</td><td class="text-end">{{ a.amount|money }}</td><td class="text-end">{{ a.invoice.outstanding|money }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="tf-empty py-3">Not allocated to any invoice.</div>{% endif %}</div>
+    {% if alloc_form %}<div class="card mb-3"><div class="card-header">Allocate unallocated credit</div><div class="card-body">
+      <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="allocate">{% with form=alloc_form %}{% include "partials/form_errors.html" %}{% endwith %}
+        <div class="row">{% for field in alloc_form %}<div class="col-md-6">{% include "partials/field.html" %}</div>{% endfor %}</div>
+        <button class="btn btn-outline-primary" type="submit">Allocate</button></form></div></div>{% endif %}
+  </div>
+  <div class="col-lg-5">
+    {% if p.notes %}<div class="card mb-3"><div class="card-body small">{{ p.notes }}</div></div>{% endif %}
+    {% if p.is_reversal %}<div class="card mb-3"><div class="card-body small">Reason: {{ p.reversal_reason }}</div></div>{% endif %}
+    {% if can_reverse %}<div class="card mb-3 border-danger"><div class="card-header">Reverse this payment</div><div class="card-body">
+      <p class="small text-secondary">Use this only if the payment was recorded by mistake or bounced. An equal and opposite entry is created; both stay in the history and the invoices become unpaid again.</p>
+      <form method="post" novalidate data-confirm="Reverse payment {{ p.number }} of {{ p.amount|money }}?">{% csrf_token %}<input type="hidden" name="action" value="reverse">{% with form=reverse_form %}{% include "partials/form_errors.html" %}{% endwith %}
+        {% for field in reverse_form %}{% include "partials/field.html" %}{% endfor %}<button class="btn btn-outline-danger" type="submit">Reverse payment</button></form></div></div>{% endif %}
+    <div class="card"><div class="card-header">Recorded</div><div class="card-body small">{{ p.created_at|date:"d-M-Y H:i" }} by {{ p.created_by|person }}<hr>{% include "partials/timeline.html" %}</div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ customer.company_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'customers:list' %}">Customers</a></li><li class="breadcrumb-item active">{{ customer.code }}</li></ol></nav>
+<div class="tf-page-head">
+  <div><h1>{{ customer.company_name }}
+    <span class="badge-status {% if customer.status == 'active' %}badge-active{% elif customer.status == 'prospect' %}badge-info{% elif customer.status == 'on_hold' %}badge-warning{% else %}badge-inactive{% endif %} align-middle ms-1">{{ customer.get_status_display }}</span>
+    {% if customer.is_archived %}<span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
+    <p>{{ customer.code }}{% if customer.category %} · {{ customer.category }}{% endif %}{% if customer.industry %} · {{ customer.industry }}{% endif %}</p></div>
+  <div class="tf-actions">
+    {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'customers:edit' customer.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>{% endif %}
+    {% if not customer.is_archived %}
+      {% if "visits.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'visits:create' %}?customer={{ customer.pk }}"><i class="bi bi-calendar-plus me-1"></i>Schedule visit</a>{% endif %}
+      {% if "communications.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'communications:create' %}?customer={{ customer.pk }}"><i class="bi bi-chat-left-text me-1"></i>Log communication</a>{% endif %}
+      {% if "pipeline.edit" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'sales:opportunity_create' %}?customer={{ customer.pk }}"><i class="bi bi-kanban me-1"></i>New opportunity</a>{% endif %}
+      {% if "tasks.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'tasks:create' %}?customer={{ customer.pk }}"><i class="bi bi-check2-square me-1"></i>Add task</a>{% endif %}
+    {% endif %}
+    {% if can_archive or can_delete %}
+    <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">More</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        {% if "statements.view" in crm_caps %}<li><a class="dropdown-item" href="{% url 'invoicing:statement' customer.pk %}"><i class="bi bi-file-earmark-text me-2"></i>Statement of account</a></li>{% endif %}
+        {% if can_archive %}<li><form method="post" action="{% url 'customers:archive' customer.pk %}" data-confirm="{% if customer.is_archived %}Restore{% else %}Archive{% endif %} {{ customer.company_name }}?">{% csrf_token %}<button class="dropdown-item" type="submit"><i class="bi bi-archive me-2"></i>{% if customer.is_archived %}Restore from archive{% else %}Archive{% endif %}</button></form></li>{% endif %}
+        {% if can_delete %}<li><a class="dropdown-item text-danger" href="{% url 'customers:delete' customer.pk %}"><i class="bi bi-trash me-2"></i>Delete</a></li>{% endif %}
+      </ul></div>
+    {% elif "statements.view" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'invoicing:statement' customer.pk %}"><i class="bi bi-file-earmark-text me-1"></i>Statement</a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-header">Details</div><div class="card-body">
+      <dl class="row mb-0 small tf-dl">
+        <dt class="col-5">Primary contact</dt><dd class="col-7">{{ customer.contact_person|default:"—" }}{% if customer.designation %}<br><span class="text-secondary">{{ customer.designation }}</span>{% endif %}</dd>
+        <dt class="col-5">Phone</dt><dd class="col-7">{% if customer.phone %}<a href="tel:{{ customer.phone }}">{{ customer.phone }}</a>{% else %}—{% endif %}{% if customer.alt_phone %}<br>{{ customer.alt_phone }}{% endif %}</dd>
+        <dt class="col-5">Email</dt><dd class="col-7 text-break">{% if customer.email %}<a href="mailto:{{ customer.email }}">{{ customer.email }}</a>{% else %}—{% endif %}</dd>
+        <dt class="col-5">Website</dt><dd class="col-7 text-break">{% if customer.website %}<a href="{{ customer.website }}" target="_blank" rel="noopener noreferrer">{{ customer.website }}</a>{% else %}—{% endif %}</dd>
+        <dt class="col-5">TRN</dt><dd class="col-7">{{ customer.trn|default:"—" }}</dd>
+        <dt class="col-5">Billing address</dt><dd class="col-7">{{ customer.billing_address|linebreaksbr|default:"—" }}</dd>
+        <dt class="col-5">Office address</dt><dd class="col-7">{{ customer.office_address|linebreaksbr|default:"—" }}</dd>
+        <dt class="col-5">City / country</dt><dd class="col-7">{{ customer.city|default:"—" }}{% if customer.country %}, {{ customer.country }}{% endif %}</dd>
+        <dt class="col-5">Source</dt><dd class="col-7">{{ customer.source|default:"—" }}</dd>
+        <dt class="col-5">Sales Engineer</dt><dd class="col-7">{{ customer.assigned_engineer|person }}</dd>
+        <dt class="col-5">Coordinator</dt><dd class="col-7">{{ customer.assigned_coordinator|person }}</dd>
+        <dt class="col-5">Created</dt><dd class="col-7">{{ customer.created_at|date:"d-M-Y" }}</dd>
+        <dt class="col-5">Last contact</dt><dd class="col-7">{{ customer.last_contact_date|date:"d-M-Y"|default:"—" }}</dd>
+        <dt class="col-5">Next follow-up</dt><dd class="col-7">{% if customer.is_follow_up_overdue %}<span class="badge-status badge-danger">{{ customer.next_follow_up|date:"d-M-Y" }} overdue</span>{% else %}{{ customer.next_follow_up|date:"d-M-Y"|default:"—" }}{% endif %}</dd>
+      </dl>
+      {% if can_see_notes and customer.notes %}<hr><div class="small"><div class="text-secondary mb-1">Internal notes</div>{{ customer.notes|linebreaksbr }}</div>{% endif %}
+    </div></div>
+
+    <div class="card mb-3" id="contacts"><div class="card-header d-flex justify-content-between">Contacts
+      {% if can_edit %}<a class="small fw-normal" href="{% url 'customers:contact_add' customer.pk %}">Add contact</a>{% endif %}</div>
+      {% if contacts %}<ul class="list-group list-group-flush">{% for c in contacts %}
+        <li class="list-group-item small"><div class="d-flex justify-content-between"><strong>{{ c.name }}{% if c.is_primary %} <span class="badge-status badge-active">Primary</span>{% endif %}</strong>
+          {% if can_edit %}<a href="{% url 'customers:contact_edit' c.pk %}">Edit</a>{% endif %}</div>
+          <div class="text-secondary">{{ c.designation }}</div>
+          <div>{% if c.phone %}<a href="tel:{{ c.phone }}">{{ c.phone }}</a>{% endif %}{% if c.phone and c.email %} · {% endif %}{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}</div></li>{% endfor %}</ul>
+      {% else %}<div class="tf-empty py-3">No additional contacts.</div>{% endif %}
+    </div>
+
+    {% include "documents/_panel.html" with target=customer %}
+  </div>
+
+  <div class="col-lg-8">
+    {% for s in sections %}
+    <div class="card mb-3" id="{{ s.key }}">
+      <div class="card-header d-flex justify-content-between align-items-center">{{ s.label }} <span class="small fw-normal">{% if s.count > 10 %}showing 10 of {{ s.count }}{% else %}{{ s.count }}{% endif %}{% if s.add_url and not customer.is_archived %} · <a href="{{ s.add_url }}">Add</a>{% endif %}</span></div>
+      {% if s.rows %}
+      <div class="table-responsive"><table class="table table-sm table-hover">
+        <thead><tr>{% for c in s.columns %}<th class="{% if c.align %}text-{{ c.align }}{% endif %}">{{ c.label }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for row in s.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<div class="tf-empty py-3">None yet.</div>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="card" id="timeline"><div class="card-header">Customer timeline</div><div class="card-body">
+      {% include "partials/timeline.html" with show_object=True %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

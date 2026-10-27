@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Sales forecast{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Sales forecast</h1><p>Open opportunities by expected closing month. Weighted forecast = estimated value × closing probability.</p></div>
+  <div class="btn-group">{% for label, url, icon, active in view_tabs %}<a class="btn btn-outline-secondary {% if active %}active{% endif %}" href="{{ url }}"><i class="bi bi-{{ icon }} me-1"></i>{{ label }}</a>{% endfor %}</div></div>
+<form class="tf-filterbar mb-3" method="get" data-no-spinner>
+  {% for f in filters %}<div><label class="form-label small" for="f_{{ f.key }}">{{ f.label }}</label><select class="form-select" id="f_{{ f.key }}" name="{{ f.key }}"><option value="">All</option>{% for k, v in f.choices %}<option value="{{ k }}" {% if f.value == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>{% endfor %}
+  <div><button class="btn btn-outline-primary" type="submit">Apply</button> <a class="btn btn-link" href="{{ request.path }}">Clear</a></div>
+</form>
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-header">By expected closing month</div>
+    <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Month</th><th class="text-end">Opportunities</th><th class="text-end">Value (AED)</th><th class="text-end">Weighted (AED)</th></tr></thead>
+      <tbody>{% for r in rows %}<tr><td>{% if r.year %}<a href="{% url 'sales:pipeline' %}?state=open&close_from={{ r.year }}-{{ r.month|stringformat:'02d' }}-01&close_to={{ r.year }}-{{ r.month|stringformat:'02d' }}-28">{{ r.label }}</a>{% else %}{{ r.label }}{% endif %}</td><td class="text-end">{{ r.count }}</td><td class="text-end">{{ r.value|money }}</td><td class="text-end">{{ r.weighted|money }}</td></tr>{% endfor %}</tbody>
+      <tfoot><tr class="fw-semibold"><td>Total open pipeline</td><td class="text-end">{{ totals.count }}</td><td class="text-end">{{ totals.value|money }}</td><td class="text-end">{{ totals.weighted|money }}</td></tr></tfoot></table></div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-header">By stage</div>
+    <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Stage</th><th class="text-end">Count</th><th class="text-end">Value</th><th class="text-end">Weighted</th></tr></thead>
+      <tbody>{% for r in by_stage %}<tr><td><a href="{% url 'sales:pipeline' %}?stage={{ r.stage.pk }}">{{ r.stage }}</a></td><td class="text-end">{{ r.count }}</td><td class="text-end">{{ r.value|money }}</td><td class="text-end">{{ r.weighted|money }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+</div>
+{% endblock %}

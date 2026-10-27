@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>{{ title }}</h1><p>Saved as a draft. Nothing is sent or locked until you submit it.</p></div></div>
+{% if no_tax_rates %}<div class="alert alert-warning">No tax rates are set up. The System Administrator must add at least one in Settings &gt; Tax rates before quotations can be saved.</div>{% endif %}
+<form method="post" novalidate>{% csrf_token %}
+  {% if qform.non_field_errors or rform.non_field_errors %}<div class="alert alert-danger">{{ qform.non_field_errors }}{{ rform.non_field_errors }}</div>{% elif qform.errors or rform.errors or formset.total_error_count %}<div class="alert alert-danger">Please correct the highlighted fields.</div>{% endif %}
+  <div class="row g-3">
+    <div class="col-lg-4"><div class="card h-100"><div class="card-header">Customer</div><div class="card-body">
+      {% for field in qform %}{% include "partials/field.html" %}{% endfor %}
+    </div></div></div>
+    <div class="col-lg-8"><div class="card h-100"><div class="card-header">Quotation details</div><div class="card-body"><div class="row">
+      {% for title, fields in rform.get_fieldsets %}{% for field in fields %}<div class="{% if field.field.widget.attrs.rows %}col-md-6{% else %}col-md-4{% endif %}">{% include "partials/field.html" %}</div>{% endfor %}{% endfor %}
+    </div></div></div></div>
+  </div>
+  {% include "partials/lines_editor.html" %}
+  <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit">Save draft</button>
+    <a class="btn btn-outline-secondary" href="{% if quotation %}{{ quotation.get_absolute_url }}{% else %}{% url 'quotations:list' %}{% endif %}">Cancel</a></div>
+</form>
+{% endblock %}

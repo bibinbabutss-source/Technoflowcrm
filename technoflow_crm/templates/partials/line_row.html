@@ -1,0 +1,10 @@
+<tr data-line>
+  <td style="min-width:240px">{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.description }}{{ f.description.errors }}</td>
+  <td style="width:95px">{{ f.quantity }}{{ f.quantity.errors }}</td>
+  <td style="width:80px">{{ f.unit }}{{ f.unit.errors }}</td>
+  <td style="width:120px">{{ f.unit_price }}{{ f.unit_price.errors }}</td>
+  <td style="width:85px">{{ f.discount_pct }}{{ f.discount_pct.errors }}</td>
+  <td style="width:150px">{{ f.tax_rate }}{{ f.tax_rate.errors }}</td>
+  <td class="text-end text-nowrap" data-line-total>—</td>
+  <td class="text-center">{% if f.DELETE %}<label class="small text-secondary">{{ f.DELETE }} Remove</label>{% endif %}</td>
+</tr>

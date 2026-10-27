@@ -1,0 +1,11 @@
+{% load crm %}
+<table class="{% if pdf %}lines{% else %}table table-sm{% endif %}">
+  <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Details</th><th class="{% if pdf %}r{% else %}text-end{% endif %}">Debit</th><th class="{% if pdf %}r{% else %}text-end{% endif %}">Credit</th><th class="{% if pdf %}r{% else %}text-end{% endif %}">Balance</th></tr></thead>
+  <tbody>
+    <tr><td>{{ start|date:"d-M-Y" }}</td><td colspan="5"><b>Opening balance</b></td><td class="{% if pdf %}r{% else %}text-end{% endif %}"><b>{{ opening|money }}</b></td></tr>
+    {% for e in entries %}<tr><td>{{ e.date|date:"d-M-Y" }}</td><td>{{ e.kind }}</td><td>{% if pdf or e.kind != "Invoice" and "collections.view" not in crm_caps %}{{ e.ref }}{% else %}<a href="{{ e.obj.get_absolute_url }}">{{ e.ref }}</a>{% endif %}</td><td>{{ e.detail }}</td>
+      <td class="{% if pdf %}r{% else %}text-end{% endif %}">{% if e.debit %}{{ e.debit|money }}{% endif %}</td><td class="{% if pdf %}r{% else %}text-end{% endif %}">{% if e.credit %}{{ e.credit|money }}{% endif %}</td><td class="{% if pdf %}r{% else %}text-end{% endif %}">{{ e.balance|money }}</td></tr>
+    {% empty %}<tr><td colspan="7">No transactions in this period.</td></tr>{% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="4"><b>Totals for the period</b></td><td class="{% if pdf %}r{% else %}text-end{% endif %}"><b>{{ total_debit|money }}</b></td><td class="{% if pdf %}r{% else %}text-end{% endif %}"><b>{{ total_credit|money }}</b></td><td class="{% if pdf %}r{% else %}text-end{% endif %}"><b>{{ closing|money }}</b></td></tr></tfoot>
+</table>

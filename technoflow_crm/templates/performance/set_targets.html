@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Set targets{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Set targets</h1><p>Choose who and which period, then enter a target for each KPI. Leave a box empty for no target.</p></div></div>
+<form method="get" class="card mb-3" novalidate><div class="card-body"><div class="row align-items-end">
+  {% for field in form %}<div class="col-md-4">{% include "partials/field.html" %}</div>{% endfor %}
+  <div class="col-12"><button class="btn btn-outline-primary" type="submit">Load targets</button></div></div></div></form>
+{% if loaded %}
+<form method="post" novalidate>{% csrf_token %}
+  {% for field in form %}{{ field.as_hidden }}{% endfor %}
+  {% if errors %}<div class="alert alert-danger">{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+  <div class="card"><div class="card-header">{% if form.cleaned_data.employee %}{{ form.cleaned_data.employee|person }}{% else %}Company-wide{% endif %} · {{ form.cleaned_data.period_type|capfirst }} starting {{ start|date:"d M Y" }}</div>
+    <div class="table-responsive"><table class="table"><thead><tr><th>KPI</th><th>Unit</th><th style="width:220px">Target</th></tr></thead>
+    <tbody>{% for k, v in kpis %}<tr><td>{{ k.name }}<div class="small text-secondary">{{ k.description }}</div></td><td>{% if k.unit == "amount" %}AED{% elif k.unit == "percent" %}%{% else %}count{% endif %}</td>
+      <td><input class="form-control text-end" type="number" step="0.01" min="0" {% if k.unit == "percent" %}max="100"{% endif %} name="kpi_{{ k.pk }}" value="{{ v }}" aria-label="Target for {{ k.name }}"></td></tr>{% endfor %}</tbody></table></div></div>
+  <button class="btn btn-primary mt-3" type="submit">Save targets</button>
+</form>
+{% endif %}
+{% endblock %}

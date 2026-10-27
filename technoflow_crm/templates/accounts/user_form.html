@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{% if is_new %}Add employee{% else %}Edit {{ profile.full_name }}{% endif %}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'accounts:user_list' %}">User management</a></li>
+  {% if not is_new %}<li class="breadcrumb-item"><a href="{% url 'accounts:user_detail' profile.pk %}">{{ profile.full_name }}</a></li>{% endif %}
+  <li class="breadcrumb-item active">{% if is_new %}Add employee{% else %}Edit{% endif %}</li></ol></nav>
+<div class="tf-page-head"><div><h1>{% if is_new %}Add employee{% else %}Edit {{ profile.full_name }}{% endif %}</h1>
+  <p>Fields marked <span class="required-mark">*</span> are required. Role limits are checked when you save.</p></div></div>
+
+<form method="post" novalidate>{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card"><div class="card-header">Employee details</div><div class="card-body">
+        <div class="row">
+          <div class="col-md-6">{% with field=form.first_name %}{% include "partials/field.html" %}{% endwith %}</div>
+          <div class="col-md-6">{% with field=form.last_name %}{% include "partials/field.html" %}{% endwith %}</div>
+          {% if form.username %}<div class="col-md-6">{% with field=form.username %}{% include "partials/field.html" %}{% endwith %}</div>{% endif %}
+          <div class="col-md-6">{% with field=form.email %}{% include "partials/field.html" %}{% endwith %}</div>
+          <div class="col-md-6">{% with field=form.employee_id %}{% include "partials/field.html" %}{% endwith %}</div>
+          <div class="col-md-6">{% with field=form.phone %}{% include "partials/field.html" %}{% endwith %}</div>
+          <div class="col-md-6">{% with field=form.department %}{% include "partials/field.html" %}{% endwith %}</div>
+          <div class="col-md-6">{% with field=form.job_title %}{% include "partials/field.html" %}{% endwith %}</div>
+        </div>
+      </div></div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card mb-3"><div class="card-header">Role and reporting</div><div class="card-body">
+        {% with field=form.role %}{% include "partials/field.html" %}{% endwith %}
+        {% with field=form.reporting_manager %}{% include "partials/field.html" %}{% endwith %}
+        {% with field=form.team_members %}{% include "partials/field.html" %}{% endwith %}
+      </div></div>
+      {% if form.temporary_password %}
+      <div class="card"><div class="card-header">Sign-in</div><div class="card-body">
+        {% with field=form.temporary_password %}{% include "partials/field.html" %}{% endwith %}
+      </div></div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2 mt-3">
+    <button class="btn btn-primary" type="submit">{% if is_new %}Create account{% else %}Save changes{% endif %}</button>
+    <a class="btn btn-outline-secondary" href="{% if is_new %}{% url 'accounts:user_list' %}{% else %}{% url 'accounts:user_detail' profile.pk %}{% endif %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,11 @@
+<div class="tf-page-head"><div><h1>Settings</h1><p>Company details and system defaults. Changes are recorded in the audit log.</p></div></div>
+<ul class="nav nav-tabs mb-0 flex-nowrap overflow-auto text-nowrap">
+  <li class="nav-item"><a class="nav-link {% if tab == 'company' %}active{% endif %}" href="{% url 'core:settings_home' %}">Company</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'workflow' %}active{% endif %}" href="{% url 'core:settings_workflow' %}">Approvals &amp; reminders</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'tax' %}active{% endif %}" href="{% url 'core:tax_rates' %}">Tax rates</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'stages' %}active{% endif %}" href="{% url 'core:stages' 'lead' %}">Stages</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'numbering' %}active{% endif %}" href="{% url 'core:numbering' %}">Document numbering</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'lookups' %}active{% endif %}" href="{% url 'core:lookups' %}">Drop-down lists</a></li>
+  <li class="nav-item"><a class="nav-link" href="{% url 'accounts:role_list' %}">Roles &amp; limits</a></li>
+  {% if "data.import" in crm_caps %}<li class="nav-item"><a class="nav-link" href="{% url 'reporting:import_start' %}">Import data</a></li>{% endif %}
+</ul>

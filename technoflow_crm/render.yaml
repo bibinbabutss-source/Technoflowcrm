@@ -1,0 +1,88 @@
+# Render.com Blueprint for Technoflow CRM.
+# In Render: New > Blueprint > select this GitHub repository.
+# It creates two things: a PostgreSQL database and the web service.
+#
+# IMPORTANT: do not rename "technoflow-crm-db" after the first deploy.
+# Render identifies the database by this name; a new name creates a new, empty database.
+
+databases:
+  - name: technoflow-crm-db
+    databaseName: technoflow_crm
+    user: technoflow
+    postgresMajorVersion: "16"
+    region: frankfurt
+    # free: expires 30 days after creation (14-day grace period to upgrade, then deleted),
+    #       1 GB, no backups. Fine for a short demonstration.
+    # 0.1c-256mb: smallest paid plan, kept permanently, with point-in-time recovery.
+    #       Upgrade before the 30 days end to keep your records (Render dashboard > database > Upgrade).
+    plan: free
+
+services:
+  - type: web
+    name: technoflow-crm
+    runtime: python
+    region: frankfurt          # must match the database region
+    # free: sleeps after 15 minutes without visitors; the first visit then takes about a minute.
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile -
+    healthCheckPath: /healthz/
+    autoDeploy: true           # redeploy on every push to the main branch
+    # Uploaded documents need a persistent disk (paid web service only). To keep documents:
+    # change "plan: free" above to "plan: starter", uncomment these lines, and add the
+    # environment variable MEDIA_ROOT=/var/data/media below.
+    # disk:
+    #   name: crm-files
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: technoflow-crm-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true    # random 44-character key, created once and kept
+      - key: DEBUG
+        value: "False"
+      - key: TIME_ZONE
+        value: Asia/Dubai
+
+      # ---- Values you type in the Render dashboard when creating the Blueprint ----
+      # (sync: false = never stored in this file or in GitHub)
+
+      # Path of Django's technical admin, e.g. control-7421 (letters, digits, - and _ only)
+      - key: ADMIN_URL
+        sync: false
+      # First System Administrator, created once on the first deploy.
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_FIRST_NAME
+        sync: false
+      - key: ADMIN_LAST_NAME
+        sync: false
+      - key: ADMIN_TEMP_PASSWORD
+        sync: false
+      # Optional: a password for the demo.director / demo.accounts / demo.engineer /
+      # demo.coordinator logins. Leave empty for no demo users.
+      - key: DEMO_USERS_PASSWORD
+        sync: false
+      # "true" also loads fictional demo customers, quotations, orders, invoices and payments
+      # (only when DEMO_USERS_PASSWORD is set). Use "false" for real use.
+      - key: LOAD_DEMO_DATA
+        value: "true"
+      # Public address used in notification e-mails, e.g. https://technoflow-crm.onrender.com
+      - key: SITE_URL
+        sync: false
+      # Optional SMTP settings for e-mail notifications and password resets (empty = no e-mail sent)
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false

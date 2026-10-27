@@ -1,0 +1,99 @@
+{% load static crm %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · {{ company.company_name }} CRM</title>
+  <link rel="icon" href="{% static 'img/technoflow-logo.png' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/technoflow.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header class="tf-topbar">
+  <button class="btn btn-sm btn-outline-secondary tf-menu-toggle" type="button" data-tf-toggle-nav aria-label="Open menu">
+    <i class="bi bi-list"></i>
+  </button>
+  <a class="tf-brand" href="{% url 'core:dashboard' %}">
+    <img class="tf-logo" src="{% static 'img/technoflow-logo.png' %}" alt="{{ company.company_name }}">
+    <span class="tf-brand-sub">Trading LLC<br>CRM</span>
+  </a>
+  {% if crm_profile %}
+  <form class="tf-search" method="get" action="{% url 'reporting:search' %}" role="search" data-no-spinner>
+    <div class="input-group input-group-sm"><span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+      <input class="form-control" name="q" placeholder="Search customers, leads, quotations, invoices…" aria-label="Global search" value="{{ request.GET.q|default:'' }}"></div>
+  </form>
+  {% endif %}
+  <div class="tf-user">
+    {% if crm_profile %}
+      {% if "notifications.view" in crm_caps %}
+      <div class="dropdown">
+        <button class="btn p-0 border-0 tf-bell" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications{% if crm_unread %}: {{ crm_unread }} unread{% endif %}">
+          <i class="bi bi-bell"></i>{% if crm_unread %}<span class="count">{{ crm_unread }}</span>{% endif %}
+        </button>
+        <div class="dropdown-menu dropdown-menu-end p-0" style="width:340px;max-width:90vw">
+          <div class="px-3 py-2 border-bottom d-flex justify-content-between small"><strong>Notifications</strong><a href="{% url 'notifications:list' %}">See all</a></div>
+          {% for n in crm_recent_notifications %}
+            <form method="post" action="{% url 'notifications:open' n.pk %}" data-no-spinner>{% csrf_token %}
+              <button class="dropdown-item small text-wrap {% if not n.is_read %}fw-semibold{% endif %}" type="submit">{{ n.title }}<div class="text-secondary fw-normal">{{ n.created_at|timesince }} ago</div></button></form>
+          {% empty %}<div class="px-3 py-3 small text-secondary">No notifications.</div>{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="text-end tf-user-name lh-sm">
+        <div class="fw-semibold">{{ crm_profile.full_name }}</div>
+        <span class="tf-role-badge">{{ crm_profile.role.name }}</span>
+      </div>
+      <div class="dropdown">
+        <button class="btn p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
+          <span class="tf-avatar">{% if request.user.first_name %}{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}{% else %}{{ request.user.username|first|upper }}{% endif %}</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li class="px-3 py-2 small text-secondary d-lg-none">{{ crm_profile.full_name }} · {{ crm_profile.role.name }}</li>
+          <li><a class="dropdown-item" href="{% url 'accounts:my_profile' %}"><i class="bi bi-person me-2"></i>My profile</a></li>
+          <li><a class="dropdown-item" href="{% url 'accounts:password_change' %}"><i class="bi bi-key me-2"></i>Change password</a></li>
+          <li><a class="dropdown-item" href="{% url 'accounts:mfa_setup' %}"><i class="bi bi-shield-check me-2"></i>Two-step sign-in</a></li>
+          {% if "notifications.view" in crm_caps %}<li><a class="dropdown-item" href="{% url 'notifications:preferences' %}"><i class="bi bi-bell me-2"></i>Notification preferences</a></li>{% endif %}
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'accounts:logout' %}" data-no-spinner>{% csrf_token %}
+              <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Sign out</button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</header>
+
+<nav class="tf-sidebar" aria-label="Main navigation">
+  {% for section in crm_nav %}
+    <div class="tf-nav-section">{{ section.title }}</div>
+    {% for item in section.items %}
+      <a class="tf-nav-link {% nav_active item.url_name %}" href="{% url item.url_name %}">
+        <i class="bi bi-{{ item.icon }}"></i>{{ item.label }}
+        {% if item.url_name == "notifications:list" and crm_unread %}<span class="tf-phase" style="color:#fff;border-color:#B42318;background:#B42318">{{ crm_unread }}</span>{% endif %}
+      </a>
+    {% endfor %}
+  {% endfor %}
+</nav>
+
+<div class="tf-messages">
+  {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endfor %}
+</div>
+
+<main class="tf-main">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/technoflow.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

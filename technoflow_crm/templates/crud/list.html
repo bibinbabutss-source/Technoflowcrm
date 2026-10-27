@@ -1,0 +1,63 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="tf-page-head">
+  <div><h1>{{ title }}</h1>{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}</div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if view_tabs %}<div class="btn-group" role="group" aria-label="Views">
+      {% for label, url, icon, active in view_tabs %}<a class="btn btn-outline-secondary {% if active %}active{% endif %}" href="{{ url }}"><i class="bi bi-{{ icon }} me-1"></i>{{ label }}</a>{% endfor %}
+    </div>{% endif %}
+    {% block head_actions %}{% endblock %}
+    {% if can_export %}
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button"><i class="bi bi-download me-1"></i>Export</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{% querystring export='xlsx' page=None %}">Excel (.xlsx)</a></li>
+        <li><a class="dropdown-item" href="{% querystring export='csv' page=None %}">CSV</a></li>
+      </ul>
+    </div>
+    {% endif %}
+    {% if can_create %}<a class="btn btn-primary" href="{{ create_url }}"><i class="bi bi-plus-lg me-1"></i>{{ create_label }}</a>{% endif %}
+  </div>
+</div>
+
+{% if summary %}
+<div class="row g-3 mb-3">{% for label, value in summary %}
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">{{ label }}</div><div class="value fs-5">{{ value }}</div></div></div>
+{% endfor %}</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body border-bottom">
+    <form class="tf-filterbar" method="get" data-no-spinner>
+      {% if search_enabled %}<div><label class="form-label small" for="q">Search</label>
+        <input class="form-control" id="q" name="q" value="{{ q }}" placeholder="{{ search_placeholder }}"></div>{% endif %}
+      {% for f in filters %}
+        {% if f.kind == "daterange" %}
+          <div><label class="form-label small" for="{{ f.key }}_from">{{ f.label }} from</label><input class="form-control" type="date" id="{{ f.key }}_from" name="{{ f.key }}_from" value="{{ f.value_from }}"></div>
+          <div><label class="form-label small" for="{{ f.key }}_to">to</label><input class="form-control" type="date" id="{{ f.key }}_to" name="{{ f.key }}_to" value="{{ f.value_to }}"></div>
+        {% else %}
+          <div><label class="form-label small" for="f_{{ f.key }}">{{ f.label }}</label>
+            <select class="form-select" id="f_{{ f.key }}" name="{{ f.key }}"><option value="">All</option>
+              {% for k, v in f.choices %}<option value="{{ k }}" {% if f.value == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+            </select></div>
+        {% endif %}
+      {% endfor %}
+      {% if sort_options %}<div><label class="form-label small" for="sort">Sort by</label>
+        <select class="form-select" id="sort" name="sort">{% for k, v in sort_options %}<option value="{{ k }}" {% if sort == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>{% endif %}
+      {% if archivable %}<div class="form-check mb-2 ms-1"><input class="form-check-input" type="checkbox" name="archived" value="1" id="archived" {% if show_archived %}checked{% endif %}><label class="form-check-label small" for="archived">Archived</label></div>{% endif %}
+      <div><button class="btn btn-outline-primary" type="submit">Apply</button> <a class="btn btn-link" href="{{ request.path }}">Clear</a></div>
+    </form>
+  </div>
+  {% if rows %}
+  <div class="table-responsive"><table class="table table-hover">
+    <thead><tr>{% for c in columns %}<th class="{% if c.align %}text-{{ c.align }}{% endif %}">{{ c.label }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for row in rows %}<tr>{% for cell in row.cells %}<td class="{% if cell.align %}text-{{ cell.align }} text-nowrap{% endif %} {{ cell.css }}">{{ cell.html }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+  {% else %}
+    <div class="tf-empty"><i class="bi bi-{{ icon }}"></i>{% if q or request.GET %}No records match these filters.{% else %}Nothing here yet.{% if can_create %} <a href="{{ create_url }}">{{ create_label }}</a>{% endif %}{% endif %}</div>
+  {% endif %}
+</div>
+{% block after_table %}{% endblock %}
+{% endblock %}

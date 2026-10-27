@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>My profile</h1><p>Contact the System Administrator to change your role or details.</p></div>
+  <div class="d-flex gap-2 flex-wrap"><a class="btn btn-outline-primary" href="{% url 'accounts:mfa_setup' %}"><i class="bi bi-shield-check me-1"></i>Two-step sign-in: {{ profile.mfa_enabled|yesno:"On,Off" }}</a>
+  <a class="btn btn-outline-primary" href="{% url 'accounts:password_change' %}"><i class="bi bi-key me-1"></i>Change password</a></div></div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Details</div><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-5 text-secondary fw-normal">Name</dt><dd class="col-7">{{ profile.full_name }}</dd>
+      <dt class="col-5 text-secondary fw-normal">Username</dt><dd class="col-7">{{ request.user.username }}</dd>
+      <dt class="col-5 text-secondary fw-normal">Work email</dt><dd class="col-7">{{ request.user.email }}</dd>
+      <dt class="col-5 text-secondary fw-normal">Employee ID</dt><dd class="col-7">{{ profile.employee_id }}</dd>
+      <dt class="col-5 text-secondary fw-normal">Role</dt><dd class="col-7">{{ profile.role.name }}</dd>
+      <dt class="col-5 text-secondary fw-normal">Department</dt><dd class="col-7">{{ profile.department|default:"—" }}</dd>
+      <dt class="col-5 text-secondary fw-normal">Reports to</dt><dd class="col-7">{{ profile.reporting_manager|default:"—" }}</dd>
+    </dl></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Recent sign-ins</div>
+    {% if logins %}<ul class="list-group list-group-flush">{% for l in logins %}<li class="list-group-item small d-flex justify-content-between"><span>{% if l.event == "failed" %}<span class="badge-status badge-danger">Failed</span>{% else %}{{ l.get_event_display }}{% endif %}</span><span class="text-secondary">{{ l.timestamp|date:"d-M-Y H:i" }} · {{ l.ip_address|default:"" }}</span></li>{% endfor %}</ul>
+    <div class="card-body small text-secondary border-top">If you see a sign-in you do not recognise, change your password and tell the System Administrator.</div>
+    {% else %}<div class="tf-empty">No sign-ins yet.</div>{% endif %}
+  </div></div>
+</div>
+{% endblock %}

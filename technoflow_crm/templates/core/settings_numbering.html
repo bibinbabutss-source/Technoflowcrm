@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Document numbering{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0">
+  <div class="table-responsive"><table class="table table-hover">
+    <thead><tr><th>Document</th><th>Prefix</th><th>Year in number</th><th>Restart each year</th><th>Digits</th><th>Numbers issued{% now "Y" as yr %}</th><th>Next number</th><th></th></tr></thead>
+    <tbody>{% for s in sequences %}<tr><td class="fw-semibold">{{ s.name }}</td><td>{{ s.prefix }}</td>
+      <td>{{ s.include_year|yesno:"Yes,No" }}</td><td>{{ s.reset_yearly|yesno:"Yes,No" }}</td><td>{{ s.padding }}</td>
+      <td>{{ s.last_number }}{% if s.current_year %} <span class="text-secondary small">({{ s.current_year }})</span>{% endif %}</td>
+      <td><code>{{ s.preview }}</code></td>
+      <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'core:numbering_edit' s.pk %}">Edit</a></td></tr>{% endfor %}</tbody>
+  </table></div>
+  <div class="card-body small text-secondary border-top">Numbers are issued one at a time inside a locked database transaction, so two users can never receive the same number. Issued numbers are never reused.</div>
+</div>
+{% endblock %}

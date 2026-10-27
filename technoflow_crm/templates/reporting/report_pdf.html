@@ -1,0 +1,10 @@
+{% extends "pdf/base.html" %}{% load crm %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+<h1>{{ report.title }}</h1><div class="muted">{{ report.description }} · {{ subtitle }} · printed {% now "d-M-Y H:i" %} by {{ user|person }}</div>
+{% if result.note %}<div class="muted" style="margin-top:4pt">{{ result.note }}</div>{% endif %}
+<table class="lines"><thead><tr>{% for h in result.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+<tbody>{% for row in rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% empty %}<tr><td>No data.</td></tr>{% endfor %}</tbody>
+{% if totals %}<tfoot><tr>{% for cell in totals %}<td><b>{{ cell|default_if_none:"" }}</b></td>{% endfor %}</tr></tfoot>{% endif %}</table>
+{% endblock %}
+{% block footer %}{{ report.title }}{% endblock %}

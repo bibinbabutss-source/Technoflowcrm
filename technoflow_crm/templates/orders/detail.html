@@ -1,0 +1,54 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ order.number }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'orders:list' %}">Sales orders</a></li><li class="breadcrumb-item active">{{ order.number }}</li></ol></nav>
+<div class="tf-page-head">
+  <div><h1>{{ order.number }} <span class="badge-status {% if order.status == 'draft' %}badge-warning{% elif order.status == 'completed' %}badge-active{% elif order.status == 'cancelled' %}badge-inactive{% else %}badge-info{% endif %} align-middle">{{ order.get_status_display }}</span></h1>
+    <p><a href="{{ order.customer.get_absolute_url }}">{{ order.customer.company_name }}</a> · from {% if "quotations.view" in crm_caps %}<a href="{{ order.quotation.get_absolute_url }}?rev={{ order.revision.version }}">{{ order.quotation.number }} Rev {{ order.revision.version }}</a>{% else %}{{ order.quotation.number }} Rev {{ order.revision.version }}{% endif %}{% if order.opportunity %} · {% if "pipeline.view" in crm_caps %}<a href="{{ order.opportunity.get_absolute_url }}">{{ order.opportunity.code }}</a>{% else %}{{ order.opportunity.code }}{% endif %}{% endif %}</p></div>
+  <div class="tf-actions">
+    {% if can_confirm %}<form method="post" action="{% url 'orders:confirm' order.pk %}" data-confirm="Confirm order {{ order.number }} ({{ order.currency }} {{ order.net_amount|money }} excl. VAT)? Accounts will be notified for invoicing.">{% csrf_token %}<button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>Confirm order</button></form>{% endif %}
+    {% for value, label in progress_options %}<form method="post" action="{% url 'orders:progress' order.pk %}">{% csrf_token %}<input type="hidden" name="status" value="{{ value }}"><button class="btn btn-outline-primary" type="submit">{{ label }}</button></form>{% endfor %}
+    {% if can_project %}<form method="post" action="{% url 'orders:create_project' order.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-briefcase me-1"></i>Create delivery project</button></form>{% endif %}
+    {% if can_edit %}<a class="btn btn-outline-secondary" href="{% url 'orders:edit' order.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>{% endif %}
+    {% if can_cancel %}<a class="btn btn-outline-danger" href="{% url 'orders:cancel' order.pk %}">Cancel order</a>{% endif %}
+  </div>
+</div>
+{% if order.status == "draft" %}<div class="alert alert-warning">This order is <strong>not yet confirmed</strong>. It is not counted as an order booking and cannot be invoiced until a Sales Director or the Administrator confirms it.</div>{% endif %}
+{% if order.status == "cancelled" %}<div class="alert alert-secondary">Cancelled {{ order.cancelled_at|date:"d-M-Y" }} by {{ order.cancelled_by|person }}: {{ order.cancel_reason }}</div>{% endif %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Value excl. VAT</div><div class="value fs-5">{{ order.net_amount|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Total incl. VAT</div><div class="value fs-5">{{ order.total_amount|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Invoiced</div><div class="value fs-5">{{ invoiced|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Not yet invoiced</div><div class="value fs-5">{{ uninvoiced|money }}</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="card mb-3"><div class="card-header d-flex justify-content-between">Payment milestones {% if can_edit_milestones %}<a class="small fw-normal" href="{% url 'orders:milestones' order.pk %}">Change milestones</a>{% endif %}</div>
+      <div class="table-responsive"><table class="table table-sm"><thead><tr><th>#</th><th>Milestone</th><th class="text-end">%</th><th class="text-end">Amount incl. VAT</th><th>Due</th><th>Invoice</th><th></th></tr></thead>
+      <tbody>{% for row in milestones %}<tr><td>{{ row.m.sequence }}</td><td>{{ row.m.name }}</td><td class="text-end">{{ row.m.percentage.normalize }}%</td><td class="text-end">{{ row.m.amount|money }}</td><td>{{ row.m.due_date|date:"d-M-Y"|default:"—" }}</td>
+        <td>{% if row.invoice %}<a href="{{ row.invoice.get_absolute_url }}">{{ row.invoice.display_number }}</a> · {{ row.invoice.get_status_display }}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if can_invoice and not row.invoice %}<form method="post" action="{% url 'invoicing:create_from_milestone' row.m.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit">Prepare invoice</button></form>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="7" class="tf-empty">No milestones.</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="card mb-3"><div class="card-header">Order lines</div>
+      <div class="table-responsive"><table class="table table-sm"><thead><tr><th>#</th><th>Description</th><th class="text-end">Qty</th><th class="text-end">Unit price</th><th class="text-end">Disc.</th><th class="text-end">VAT</th><th class="text-end">Net</th></tr></thead>
+      <tbody>{% for ln in lines %}<tr><td>{{ ln.position }}</td><td>{{ ln.description|linebreaksbr }}</td><td class="text-end">{{ ln.quantity.normalize }} {{ ln.unit }}</td><td class="text-end">{{ ln.unit_price|money }}</td><td class="text-end">{% if ln.discount_pct %}{{ ln.discount_pct.normalize }}%{% endif %}</td><td class="text-end">{{ ln.tax_rate_value.normalize }}%</td><td class="text-end">{{ ln.line_net|money }}</td></tr>{% endfor %}</tbody>
+      <tfoot><tr><td colspan="6" class="text-end">Value excl. VAT (after any overall discount)</td><td class="text-end">{{ order.net_amount|money }}</td></tr><tr><td colspan="6" class="text-end">VAT</td><td class="text-end">{{ order.tax_amount|money }}</td></tr><tr class="fw-semibold"><td colspan="6" class="text-end">Total {{ order.currency }}</td><td class="text-end">{{ order.total_amount|money }}</td></tr></tfoot></table></div></div>
+    {% if invoices %}<div class="card mb-3"><div class="card-header">Invoices</div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Invoice</th><th>Date</th><th>Due</th><th class="text-end">Total</th><th class="text-end">Outstanding</th><th>Status</th></tr></thead>
+      <tbody>{% for i in invoices %}<tr><td><a href="{{ i.get_absolute_url }}">{{ i.display_number }}</a></td><td>{{ i.invoice_date|date:"d-M-Y" }}</td><td>{{ i.due_date|date:"d-M-Y" }}</td><td class="text-end">{{ i.total|money }}</td><td class="text-end">{{ i.outstanding|money }}</td><td>{{ i.display_status }}</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+  </div>
+  <div class="col-xl-4">
+    <div class="card mb-3"><div class="card-header">Details</div><div class="card-body"><dl class="row mb-0 small tf-dl">
+      <dt class="col-5">Order date</dt><dd class="col-7">{{ order.order_date|date:"d-M-Y" }}</dd>
+      <dt class="col-5">Customer PO</dt><dd class="col-7">{{ order.customer_po_ref|default:"—" }}</dd>
+      <dt class="col-5">Assigned</dt><dd class="col-7">{{ order.assigned_to|person }}</dd>
+      <dt class="col-5">Confirmed</dt><dd class="col-7">{% if order.confirmed_at %}{{ order.confirmed_at|date:"d-M-Y H:i" }}<br>{{ order.confirmed_by|person }}{% else %}—{% endif %}</dd>
+      <dt class="col-5">Payment terms</dt><dd class="col-7">{{ order.payment_terms|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-5">Delivery</dt><dd class="col-7">{{ order.delivery_details|linebreaksbr|default:"—" }}</dd>
+      {% if order.notes %}<dt class="col-5">Notes</dt><dd class="col-7">{{ order.notes|linebreaksbr }}</dd>{% endif %}
+    </dl></div></div>
+    {% if projects %}<div class="card mb-3"><div class="card-header">Delivery projects</div><ul class="list-group list-group-flush">{% for p in projects %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ p.get_absolute_url }}">{{ p }}</a><span>{{ p.get_status_display }} · {{ p.progress }}%</span></li>{% endfor %}</ul></div>{% endif %}
+    {% include "documents/_panel.html" with target=order %}
+    <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+  </div>
+</div>
+{% endblock %}

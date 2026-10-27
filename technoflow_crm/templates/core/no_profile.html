@@ -1,0 +1,7 @@
+{% extends "auth_base.html" %}
+{% block title %}No CRM access{% endblock %}
+{% block content %}
+<h1 class="mb-2">No CRM access</h1>
+<p class="text-secondary">This sign-in is not linked to an employee profile. Contact the System Administrator.</p>
+<form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-outline-primary" type="submit">Sign out</button></form>
+{% endblock %}

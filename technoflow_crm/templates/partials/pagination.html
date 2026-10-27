@@ -1,0 +1,12 @@
+{% load crm %}{% if page.paginator.num_pages > 1 %}
+<nav class="d-flex justify-content-between align-items-center px-3 py-2 border-top" aria-label="Pagination">
+  <span class="small text-secondary">{{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="{% querystring page=page.previous_page_number %}">Previous</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page.number }} of {{ page.paginator.num_pages }}</span></li>
+    {% if page.has_next %}<li class="page-item"><a class="page-link" href="{% querystring page=page.next_page_number %}">Next</a></li>{% endif %}
+  </ul>
+</nav>
+{% elif page.paginator.count %}
+<div class="px-3 py-2 border-top small text-secondary">{{ page.paginator.count }} record{{ page.paginator.count|pluralize }}</div>
+{% endif %}

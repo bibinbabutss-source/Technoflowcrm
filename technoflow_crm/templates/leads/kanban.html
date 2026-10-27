@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Leads — Kanban{% endblock %}
+{% block content %}
+<div class="tf-page-head">
+  <div><h1>Leads</h1><p>Drag a card to another stage, or use the drop-down on the card. Won and Lost show the last 90 days.</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    <div class="btn-group">{% for label, url, icon, active in view_tabs %}<a class="btn btn-outline-secondary {% if active %}active{% endif %}" href="{{ url }}"><i class="bi bi-{{ icon }} me-1"></i>{{ label }}</a>{% endfor %}</div>
+    {% if "leads.create" in crm_caps %}<a class="btn btn-primary" href="{% url 'leads:create' %}"><i class="bi bi-plus-lg me-1"></i>Add lead</a>{% endif %}
+  </div>
+</div>
+<form class="tf-filterbar mb-3" method="get" data-no-spinner>
+  <div><label class="form-label small" for="q">Search</label><input class="form-control" id="q" name="q" value="{{ q }}"></div>
+  {% for f in filters %}<div><label class="form-label small" for="f_{{ f.key }}">{{ f.label }}</label>
+    <select class="form-select" id="f_{{ f.key }}" name="{{ f.key }}"><option value="">All</option>{% for k, v in f.choices %}<option value="{{ k }}" {% if f.value == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>{% endfor %}
+  <div><button class="btn btn-outline-primary" type="submit">Apply</button> <a class="btn btn-link" href="{{ request.path }}">Clear</a></div>
+</form>
+{% include "partials/kanban.html" %}
+{% endblock %}

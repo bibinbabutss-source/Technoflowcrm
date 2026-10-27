@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ opp.code }} {{ opp.title }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'sales:pipeline' %}">Sales pipeline</a></li><li class="breadcrumb-item active">{{ opp.code }}</li></ol></nav>
+<div class="tf-page-head">
+  <div><h1>{{ opp.title }} <span class="badge-status {% if opp.stage.is_won %}badge-active{% elif opp.stage.is_lost %}badge-danger{% else %}badge-info{% endif %} align-middle">{{ opp.stage }}</span>{% if opp.is_archived %} <span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
+    <p>{{ opp.code }} · <a href="{{ opp.customer.get_absolute_url }}">{{ opp.customer.company_name }}</a></p></div>
+  <div class="tf-actions">
+    {% if "quotations.edit" in crm_caps and opp.is_open and not opp.is_archived %}<a class="btn btn-primary" href="{% url 'quotations:create' %}?opportunity={{ opp.pk }}&customer={{ opp.customer_id }}"><i class="bi bi-file-earmark-plus me-1"></i>Create quotation</a>{% endif %}
+    {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'sales:opportunity_edit' opp.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
+      <a class="btn btn-outline-secondary" href="{% url 'sales:opportunity_stage' opp.pk %}"><i class="bi bi-signpost me-1"></i>Change stage</a>{% endif %}
+    {% if "visits.create" in crm_caps and opp.is_open %}<a class="btn btn-outline-secondary" href="{% url 'visits:create' %}?customer={{ opp.customer_id }}&opportunity={{ opp.pk }}"><i class="bi bi-calendar-plus me-1"></i>Visit</a>{% endif %}
+    {% if "tasks.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'tasks:create' %}?opportunity={{ opp.pk }}&customer={{ opp.customer_id }}"><i class="bi bi-check2-square me-1"></i>Task</a>{% endif %}
+    {% if can_archive %}<form method="post" action="{% url 'sales:opportunity_archive' opp.pk %}" data-confirm="{% if opp.is_archived %}Restore{% else %}Archive{% endif %} this opportunity?">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">{% if opp.is_archived %}Restore{% else %}Archive{% endif %}</button></form>{% endif %}
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Estimated value</div><div class="value fs-5">{{ opp.estimated_value|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Closing probability</div><div class="value fs-5">{{ opp.probability }}%</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Weighted forecast</div><div class="value fs-5">{{ opp.weighted_value|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Expected close</div><div class="value fs-5">{% if opp.is_close_date_overdue %}<span class="text-danger">{{ opp.expected_close_date|date:"d-M-Y" }}</span>{% else %}{{ opp.expected_close_date|date:"d-M-Y"|default:"—" }}{% endif %}</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header">Details</div><div class="card-body"><dl class="row mb-0 small tf-dl">
+      <dt class="col-5">Source</dt><dd class="col-7">{{ opp.source|default:"—" }}</dd>
+      <dt class="col-5">Project type</dt><dd class="col-7">{{ opp.project_type|default:"—" }}</dd>
+      <dt class="col-5">Location</dt><dd class="col-7">{{ opp.location|default:"—" }}</dd>
+      <dt class="col-5">Related lead</dt><dd class="col-7">{% if opp.lead %}<a href="{{ opp.lead.get_absolute_url }}">{{ opp.lead }}</a>{% else %}—{% endif %}</dd>
+      <dt class="col-5">Sales Engineer</dt><dd class="col-7">{{ opp.assigned_engineer|person }}</dd>
+      <dt class="col-5">Coordinator</dt><dd class="col-7">{{ opp.assigned_coordinator|person }}</dd>
+      <dt class="col-5">Competitors</dt><dd class="col-7">{{ opp.competitors|default:"—" }}</dd>
+      <dt class="col-5">Next action</dt><dd class="col-7">{{ opp.next_action|default:"—" }}</dd>
+      <dt class="col-5">Next follow-up</dt><dd class="col-7">{% if opp.is_follow_up_overdue %}<span class="badge-status badge-danger">{{ opp.next_follow_up|date:"d-M-Y" }} overdue</span>{% else %}{{ opp.next_follow_up|date:"d-M-Y"|default:"—" }}{% endif %}</dd>
+      {% if opp.stage.is_lost %}<dt class="col-5">Lost reason</dt><dd class="col-7">{{ opp.lost_reason }}{% if opp.lost_notes %} — {{ opp.lost_notes }}{% endif %}</dd>{% endif %}
+    </dl>
+    {% if opp.products_services %}<hr><div class="small"><div class="text-secondary">Expected services / products</div>{{ opp.products_services|linebreaksbr }}</div>{% endif %}
+    {% if opp.notes %}<hr><div class="small"><div class="text-secondary">Notes</div>{{ opp.notes|linebreaksbr }}</div>{% endif %}</div></div>
+    {% include "documents/_panel.html" with target=opp %}
+  </div>
+  <div class="col-lg-7">
+    {% if quotations is not None and "quotations.view" in crm_caps %}<div class="card mb-3"><div class="card-header">Quotations</div>
+      {% if quotations %}<div class="table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Number</th><th>Rev.</th><th>Status</th><th class="text-end">Grand total</th><th>Salesperson</th></tr></thead><tbody>
+      {% for q in quotations %}<tr><td><a href="{{ q.get_absolute_url }}">{{ q.number }}</a></td><td>{{ q.current_version }}</td><td>{{ q.current.get_status_display }}</td><td class="text-end">{{ q.current.grand_total|money }}</td><td>{{ q.salesperson|person }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="tf-empty py-3">No quotations yet.</div>{% endif %}</div>{% endif %}
+    {% if orders %}<div class="card mb-3"><div class="card-header">Sales orders</div><ul class="list-group list-group-flush">{% for o in orders %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ o.get_absolute_url }}">{{ o.number }}</a><span>{{ o.get_status_display }} · {{ o.net_amount|money }} excl. VAT</span></li>{% endfor %}</ul></div>{% endif %}
+    {% if projects %}<div class="card mb-3"><div class="card-header">Projects under execution</div><ul class="list-group list-group-flush">{% for p in projects %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ p.get_absolute_url }}">{{ p }}</a><span>{{ p.get_status_display }} · {{ p.progress }}%</span></li>{% endfor %}</ul></div>{% endif %}
+    {% if visits %}<div class="card mb-3"><div class="card-header">Visits</div><ul class="list-group list-group-flush">{% for v in visits %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ v.get_absolute_url }}">{{ v.code }} {{ v.visit_date|date:"d-M-Y" }}</a><span>{{ v.assigned_to|person }} · {{ v.get_status_display }}</span></li>{% endfor %}</ul></div>{% endif %}
+    <div class="card mb-3"><div class="card-header">Stage history</div>
+      <div class="table-responsive"><table class="table table-sm"><thead><tr><th>When</th><th>From</th><th>To</th><th class="text-end">Prob.</th><th class="text-end">Value</th><th>By</th></tr></thead>
+      <tbody>{% for h in history %}<tr><td class="text-nowrap">{{ h.changed_at|date:"d-M-Y H:i" }}</td><td>{{ h.from_stage|default:"—" }}</td><td>{{ h.to_stage }}</td><td class="text-end">{{ h.probability }}%</td><td class="text-end">{{ h.estimated_value|money }}</td><td>{{ h.changed_by|person }}</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+  </div>
+</div>
+{% endblock %}

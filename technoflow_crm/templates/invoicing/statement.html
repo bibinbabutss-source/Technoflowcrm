@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Statement — {{ customer.company_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'customers:list' %}">Customers</a></li><li class="breadcrumb-item"><a href="{{ customer.get_absolute_url }}">{{ customer.code }}</a></li><li class="breadcrumb-item active">Statement</li></ol></nav>
+<div class="tf-page-head"><div><h1>Statement of account</h1><p>{{ customer.company_name }} · {{ start|date:"d-M-Y" }} to {{ end|date:"d-M-Y" }}</p></div>
+  <div class="tf-actions"><a class="btn btn-outline-secondary" href="{% querystring format='pdf' %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>{% if "data.export" in crm_caps %}<a class="btn btn-outline-secondary" href="{% querystring format='xlsx' %}"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>{% endif %}</div></div>
+<form method="get" class="tf-filterbar mb-3" data-no-spinner>
+  <div><label class="form-label small" for="id_start">From</label>{{ form.start }}</div><div><label class="form-label small" for="id_end">To</label>{{ form.end }}</div>
+  <div><button class="btn btn-outline-primary" type="submit">Update</button></div></form>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Opening balance</div><div class="value fs-5">{{ opening|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Invoiced in period</div><div class="value fs-5">{{ total_debit|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Received in period</div><div class="value fs-5">{{ total_credit|money }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Closing balance</div><div class="value fs-5">{{ closing|money }}</div></div></div>
+</div>
+<div class="card mb-3"><div class="table-responsive">{% include "invoicing/_statement_table.html" %}</div></div>
+<div class="card"><div class="card-header">Open invoices{% if unallocated %} · unallocated credit {{ unallocated|money }}{% endif %}</div>
+  {% if open_items %}<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Invoice</th><th>Date</th><th>Due</th><th class="text-end">Total</th><th class="text-end">Outstanding</th><th>Status</th></tr></thead>
+  <tbody>{% for i in open_items %}<tr><td><a href="{{ i.get_absolute_url }}">{{ i.number }}</a></td><td>{{ i.invoice_date|date:"d-M-Y" }}</td><td>{{ i.due_date|date:"d-M-Y" }}</td><td class="text-end">{{ i.total|money }}</td><td class="text-end">{{ i.outstanding|money }}</td><td>{{ i.display_status }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="tf-empty py-3">No open invoices.</div>{% endif %}</div>
+{% endblock %}
