@@ -1,13 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Import{% endblock %}
+{% block title %}Import from Excel{% endblock %}
 {% block content %}
-<div class="tf-page-head"><div><h1>Import customers or leads</h1><p>Upload → map columns → preview → import. Existing records are never changed; duplicates are skipped.</p></div></div>
+<div class="tf-page-head"><div><h1>Import from Excel</h1>
+  <p>1. Download the template · 2. Fill it in · 3. Upload · 4. Check the preview · 5. Import. Nothing is saved until you confirm.</p></div></div>
+{% if not full %}<div class="alert alert-light border small"><i class="bi bi-info-circle me-1"></i>Records you import are recorded under <b>your name</b>. To import for other employees, ask a Sales Director or the System Administrator.</div>{% endif %}
+
+<div class="row g-3 mb-3">
+  {% for key, spec in kinds %}
+  <div class="col-sm-6 col-xl"><div class="tf-kpi tf-kpi-{% cycle 'blue' 'brand' 'green' 'orange' 'blue' %}">
+    <div class="label"><i class="bi bi-{% cycle 'building' 'funnel' 'geo-alt' 'check2-square' 'trophy' %}"></i>{{ spec.label }}</div>
+    <div class="small my-2">{{ spec.fields|length }} columns{% for f in spec.fields %}{% if f.required %} · <b>{{ f.label }}</b>{% endif %}{% endfor %}</div>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'reporting:import_template' key %}"><i class="bi bi-download me-1"></i>Template (.xlsx)</a>
+  </div></div>
+  {% empty %}<div class="col"><div class="alert alert-warning">Your role cannot create any of the importable records.</div></div>
+  {% endfor %}
+</div>
+
 <div class="row g-3">
-  <div class="col-lg-6"><div class="card"><div class="card-body">
+  <div class="col-lg-7"><div class="card"><div class="card-header">Upload a file</div><div class="card-body">
     <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}{% include "partials/form_errors.html" %}
-      {% for field in form %}{% include "partials/field.html" %}{% endfor %}<button class="btn btn-primary" type="submit">Upload and map columns</button></form></div></div></div>
-  <div class="col-lg-6"><div class="card"><div class="card-header">Your recent imports</div>
-    {% if recent %}<ul class="list-group list-group-flush">{% for b in recent %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ b.get_absolute_url }}">{{ b.get_kind_display }} · {{ b.file_name }}</a><span>{{ b.get_status_display }}{% if b.summary.created is not None %} · {{ b.summary.created }} created{% endif %}</span></li>{% endfor %}</ul>
+      {% with field=form.kind %}{% include "partials/field.html" %}{% endwith %}
+      <fieldset class="mb-3"><legend class="form-label fs-6">{{ form.mode.label }}</legend>
+        {% for radio in form.mode %}<div class="form-check">{{ radio.tag }}<label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>{% endfor %}
+        <div class="form-text">Only a reliable match (CRM code, your Reference column, TRN) can update a record, and only the cells you fill in are changed. Same name alone is never treated as the same record.</div></fieldset>
+      {% with field=form.file %}{% include "partials/field.html" %}{% endwith %}
+      <button class="btn btn-primary" type="submit"><i class="bi bi-upload me-1"></i>Upload and check</button></form></div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-header">Your recent imports</div>
+    {% if recent %}<ul class="list-group list-group-flush">{% for b in recent %}<li class="list-group-item small d-flex justify-content-between gap-2"><a href="{{ b.get_absolute_url }}">{{ b.get_kind_display }} · {{ b.file_name }}</a><span class="text-nowrap">{% if b.status == "imported" %}<span class="badge-status badge-active">{{ b.summary.created|default:0 }} new · {{ b.summary.updated|default:0 }} updated</span>{% elif b.status == "cancelled" %}<span class="badge-status badge-inactive">Cancelled</span>{% else %}<span class="badge-status badge-warning">{{ b.get_status_display }}</span>{% endif %}</span></li>{% endfor %}</ul>
     {% else %}<div class="tf-empty py-3">No imports yet.</div>{% endif %}</div></div>
 </div>
 {% endblock %}

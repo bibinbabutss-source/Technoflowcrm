@@ -1,0 +1,13 @@
+<form class="card card-body py-2 mb-3" method="get" data-no-spinner>
+  {% for k, v in request.GET.items %}{% if k not in "period start end page" %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+  <div class="d-flex flex-wrap gap-2 align-items-center tf-chip-period" role="group" aria-label="Period">
+    <span class="small text-secondary me-1"><i class="bi bi-calendar3"></i> Period</span>
+    {% for key, label in presets %}{% if key != "custom" %}<a class="btn {% if preset == key %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?{% if keep %}{{ keep }}&amp;{% endif %}period={{ key }}">{{ label }}</a>{% endif %}{% endfor %}
+    <span class="d-flex gap-1 align-items-center ms-md-2"><input type="hidden" name="period" value="custom">
+      <input class="form-control form-control-sm" type="date" name="start" value="{{ start|date:'Y-m-d' }}" aria-label="From" style="max-width:150px">
+      <span class="small">to</span>
+      <input class="form-control form-control-sm" type="date" name="end" value="{{ end|date:'Y-m-d' }}" aria-label="To" style="max-width:150px">
+      <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button></span>
+  </div>
+  <div class="small text-secondary mt-1">{{ start|date:"D d M Y" }}{% if start != end %} – {{ end|date:"D d M Y" }}{% endif %} · figures marked <span class="badge-status badge-inactive">now</span> show today's situation</div>
+</form>

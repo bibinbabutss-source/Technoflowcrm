@@ -94,7 +94,12 @@ Nginx site, Gunicorn systemd service, daily reminder and nightly backup timers, 
 | 10 | Tasks & follow-ups, calendar | Tasks & Follow-ups |
 | 11 | Communication history | Communication History |
 | 12 | Documents (private, versioned) | Documents (+ panel on each record) |
-| 13 | Dashboards, 44 reports (screen, Excel, CSV, PDF), import, global search, notifications | Dashboard, Reports, Notifications |
+| 13 | Dashboards, 44 reports (screen, Excel, CSV, PDF), global search, notifications | Dashboard, Reports, Notifications |
+| 14 | Employee Performance: per-employee figures, filters, periods, individual dashboards | Employee Performance |
+| 15 | Daily work reports with manager review and change history (self-reported, shown apart from CRM data) | Daily Reports |
+| 16 | Excel Import Center: customers, leads, visits, tasks, opportunities / completed sales | Import from Excel |
+
+See `docs/ENHANCEMENT_REPORT.md` for modules 14–16 (rules, permissions, test results, deployment and rollback).
 
 ## Project layout
 

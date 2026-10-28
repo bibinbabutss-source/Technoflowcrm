@@ -337,3 +337,29 @@ def _add_errors(form, exc):
             form.add_error(field if field in form.fields else None, errs)
     else:
         form.add_error(None, exc.messages)
+
+
+@require_POST
+@capability_required("users.manage")
+def user_send_reset_link(request, pk):
+    """Email the employee a one-time password-reset link. Passwords are never shown to anyone."""
+    from django.conf import settings
+    from django.contrib.auth.forms import PasswordResetForm
+
+    profile = get_object_or_404(EmployeeProfile.objects.select_related("user"), pk=pk)
+    user = profile.user
+    if not user.is_active or not user.email:
+        messages.error(request, "The employee needs an active account and an email address.")
+        return redirect("accounts:user_detail", pk=pk)
+    form = PasswordResetForm({"email": user.email})
+    form.is_valid()
+    site = getattr(settings, "SITE_URL", "")
+    form.save(request=request, use_https=request.is_secure() or site.startswith("https"),
+              domain_override=site.split("://", 1)[-1] if site else None,
+              email_template_name="accounts/email/password_reset.txt",
+              subject_template_name="accounts/email/password_reset_subject.txt")
+    log_action("password_reset", profile, message=f"Password-reset link emailed to {user.email} by "
+                                                  f"{request.user.username}")
+    messages.success(request, f"A password-reset link was sent to {user.email}. It works once and expires after "
+                              f"{settings.PASSWORD_RESET_TIMEOUT // 3600} hours.")
+    return redirect("accounts:user_detail", pk=pk)

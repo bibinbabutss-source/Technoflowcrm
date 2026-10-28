@@ -1,0 +1,8 @@
+<tr>
+  <td style="min-width:150px">{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.kind }}{{ f.kind.errors }}</td>
+  <td style="min-width:170px">{{ f.customer }}{{ f.customer.errors }}</td>
+  <td style="min-width:170px">{{ f.lead }}{{ f.lead.errors }}</td>
+  <td style="min-width:220px">{{ f.description }}{{ f.description.errors }}</td>
+  <td style="min-width:180px">{{ f.outcome }}{{ f.outcome.errors }}</td>
+  <td class="text-center">{% if f.DELETE %}<label class="small text-secondary">{{ f.DELETE }} Remove</label>{% endif %}</td>
+</tr>

@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Daily Reports{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Daily Reports</h1>
+  <p>Work reports written by employees. These are <b>self-reported</b> and kept separate from the activity the CRM records automatically.</p></div>
+  <div class="tf-actions">{% if can_submit %}{% if today_report %}<a class="btn btn-primary" href="{{ today_report.get_absolute_url }}"><i class="bi bi-journal-text me-1"></i>Today's report ({{ today_report.get_status_display|lower }})</a>{% else %}<a class="btn btn-primary" href="{% url 'dailyreports:new' %}"><i class="bi bi-journal-plus me-1"></i>Write today's report</a>{% endif %}{% endif %}</div></div>
+
+{% include "performance/_period.html" %}
+
+{% if monitor %}
+<form class="card card-body py-2 mb-3" method="get" data-no-spinner><input type="hidden" name="period" value="{{ preset }}"><input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}"><input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label small mb-1" for="r-emp">Employee</label><select class="form-select form-select-sm" id="r-emp" name="employee"><option value="">All</option>{% for e in employees %}<option value="{{ e.pk }}" {% if emp == e.pk %}selected{% endif %}>{{ e|person }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label small mb-1" for="r-st">Status</label><select class="form-select form-select-sm" id="r-st" name="status"><option value="">Submitted and reviewed</option><option value="submitted" {% if status == "submitted" %}selected{% endif %}>Waiting for review</option><option value="reviewed" {% if status == "reviewed" %}selected{% endif %}>Reviewed</option><option value="draft" {% if status == "draft" %}selected{% endif %}>My drafts</option></select></div>
+    <div class="col-12 col-md-auto"><button class="btn btn-sm btn-primary" type="submit">Apply</button></div>
+  </div></form>
+
+<div class="card mb-3"><div class="card-header">Summary for the period <span class="small text-secondary fw-normal">— {{ working_days }} working day{{ working_days|pluralize }} (Mon–Fri) up to today</span></div>
+<div class="table-responsive"><table class="table table-sm align-middle mb-0 small">
+  <thead><tr><th>Employee</th><th class="text-end">Reports submitted</th><th style="min-width:130px">Coverage</th><th class="text-end">Reviewed</th>{% for k, label in kinds %}<th class="text-end">{{ label }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for r in summary %}<tr><td><a href="{% url 'dailyreports:list' %}?employee={{ r.user.pk }}&amp;period={{ preset }}{% if preset == 'custom' %}&amp;start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% endif %}">{{ r.user|person }}</a></td><td class="text-end">{{ r.submitted }}</td>
+    <td>{% if r.pct is not None %}<div class="d-flex align-items-center gap-2"><div class="tf-progress flex-grow-1"><span class="{% if r.pct >= 90 %}tf-prog-green{% elif r.pct >= 60 %}tf-prog-orange{% else %}tf-prog-red{% endif %}" style="width:{% if r.pct > 100 %}100{% else %}{{ r.pct }}{% endif %}%"></span></div><span>{{ r.pct }}%</span></div>{% else %}—{% endif %}</td>
+    <td class="text-end">{{ r.reviewed }}</td>{% for k, label in kinds %}<td class="text-end">{{ r.kinds|get_item:k|default:0 }}</td>{% endfor %}</tr>
+  {% empty %}<tr><td colspan="13" class="text-secondary">No employees.</td></tr>{% endfor %}</tbody></table></div>
+<div class="card-body small text-secondary border-top">Activity counts come from the lines employees wrote in their reports (self-reported, not verified). Compare with the CRM-recorded figures on each employee's dashboard.</div></div>
+{% endif %}
+
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0">
+  <thead><tr><th>Date</th><th>Employee</th><th>Status</th><th class="text-end">Activity lines</th><th>Submitted</th><th>Reviewed by</th></tr></thead>
+  <tbody>{% for r in page %}<tr><td><a href="{{ r.get_absolute_url }}">{{ r.report_date|date:"D d M Y" }}</a></td><td>{{ r.employee|person }}</td>
+    <td><span class="badge-status {% if r.status == 'reviewed' %}badge-active{% elif r.status == 'submitted' %}badge-info{% else %}badge-inactive{% endif %}">{% if r.status == 'reviewed' %}<i class="bi bi-check2"></i> {% endif %}{{ r.get_status_display }}</span></td>
+    <td class="text-end">{{ r.n }}</td><td class="small text-secondary">{{ r.submitted_at|date:"d M H:i"|default:"—" }}</td><td class="small">{{ r.reviewed_by|person }}</td></tr>
+  {% empty %}<tr><td colspan="6"><div class="tf-empty"><i class="bi bi-journal"></i>No reports in this period.{% if can_submit %} <a href="{% url 'dailyreports:new' %}">Write one now</a>.{% endif %}</div></td></tr>{% endfor %}</tbody>
+</table></div>
+{% if page.has_other_pages %}<div class="card-body border-top d-flex justify-content-between small"><span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span><span>{% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">Previous</a>{% endif %}{% if page.has_next %} · <a href="{% querystring page=page.next_page_number %}">Next</a>{% endif %}</span></div>{% endif %}
+</div>
+{% endblock %}

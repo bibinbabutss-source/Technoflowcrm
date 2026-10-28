@@ -1,0 +1,62 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Employee Performance{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>Employee Performance</h1>
+  <p>Sales activity and results of {{ count }} employee{{ count|pluralize }} you manage. Click an employee to open their dashboard.</p></div>
+  <div class="tf-actions">
+    <a class="btn btn-outline-primary" href="{% url 'dailyreports:list' %}"><i class="bi bi-journal-check me-1"></i>Daily reports</a>
+    {% if can_export %}<div class="btn-group"><a class="btn btn-outline-secondary" href="{% querystring export='xlsx' %}"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a><a class="btn btn-outline-secondary" href="{% querystring export='csv' %}">CSV</a></div>{% endif %}
+  </div></div>
+
+{% include "performance/_period.html" %}
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="tf-kpi tf-kpi-green"><div class="label"><i class="bi bi-trophy"></i>Won value</div><div class="value">{{ total.won_value|money }}</div><div class="sub">{{ total.deals_won }} deal{{ total.deals_won|pluralize }} won · {{ total.deals_lost }} lost</div></div></div>
+  <div class="col-6 col-lg-3"><div class="tf-kpi tf-kpi-blue"><div class="label"><i class="bi bi-funnel"></i>Leads created</div><div class="value">{{ total.leads_created }}</div><div class="sub">{{ total.open_leads }} open leads <span class="badge-status badge-inactive">now</span></div></div></div>
+  <div class="col-6 col-lg-3"><div class="tf-kpi tf-kpi-brand"><div class="label"><i class="bi bi-geo-alt"></i>Visits completed</div><div class="value">{{ total.visits_completed }}</div><div class="sub">{{ total.quotations_created }} quotation{{ total.quotations_created|pluralize }} created</div></div></div>
+  <div class="col-6 col-lg-3"><div class="tf-kpi {% if total.overdue_tasks %}tf-kpi-red{% else %}tf-kpi-orange{% endif %}"><div class="label"><i class="bi bi-alarm"></i>Pending follow-ups</div><div class="value">{{ total.pending_followups }}</div><div class="sub">{{ total.overdue_tasks }} overdue task{{ total.overdue_tasks|pluralize }} <span class="badge-status badge-inactive">now</span></div></div></div>
+</div>
+
+<form class="card card-body py-2 mb-3" method="get" data-no-spinner>
+  <input type="hidden" name="period" value="{{ preset }}"><input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}"><input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-2"><label class="form-label small mb-1" for="f-q">Search</label><input class="form-control form-control-sm" id="f-q" name="q" value="{{ q }}" placeholder="Name or employee ID"></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1" for="f-emp">Employee</label><select class="form-select form-select-sm" id="f-emp" name="employee"><option value="">All</option>{% for e in all_employees %}<option value="{{ e.pk }}" {% if employee == e.pk %}selected{% endif %}>{{ e|person }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1" for="f-des">Designation</label><select class="form-select form-select-sm" id="f-des" name="designation"><option value="">All</option>{% for d in designations %}<option {% if designation == d %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1" for="f-dep">Department</label><select class="form-select form-select-sm" id="f-dep" name="department"><option value="">All</option>{% for d in departments %}<option {% if department == d %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1" for="f-man">Reporting manager</label><select class="form-select form-select-sm" id="f-man" name="manager"><option value="">All</option>{% for m in managers %}<option value="{{ m.pk }}" {% if manager == m.pk %}selected{% endif %}>{{ m|person }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1" for="f-st">Status</label><select class="form-select form-select-sm" id="f-st" name="status"><option value="active" {% if status == "active" %}selected{% endif %}>Active</option><option value="inactive" {% if status == "inactive" %}selected{% endif %}>Inactive</option><option value="all" {% if status == "all" %}selected{% endif %}>All</option></select></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1" for="f-sort">Sort by</label><select class="form-select form-select-sm" id="f-sort" name="sort">{% for k, v in sorts.items %}<option value="{{ k }}" {% if sort == k %}selected{% endif %}>{{ v.0 }}</option>{% endfor %}</select></div>
+    <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-sm btn-primary" type="submit">Apply</button><a class="btn btn-sm btn-outline-secondary" href="{% url 'team:list' %}">Reset</a></div>
+  </div>
+</form>
+
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0">
+  <thead><tr><th>Employee</th><th class="text-end">Leads created</th><th class="text-end">Open leads <span class="badge-status badge-inactive">now</span></th><th class="text-end">Visits done</th><th class="text-end">Quotations</th><th class="text-end">Won / lost</th><th class="text-end">Won value</th><th style="min-width:150px">Monthly target ({{ rows.object_list.0.target_month|date:"M Y"|default:"month" }})</th><th class="text-end">Follow-ups <span class="badge-status badge-inactive">now</span></th><th>Last activity</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td style="min-width:240px"><a class="d-flex align-items-center gap-2 text-decoration-none" href="{% url 'team:employee' r.user.pk %}?period={{ preset }}{% if preset == 'custom' %}&amp;start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% endif %}">
+        <span class="tf-avatar-sm">{{ r.user.first_name|slice:":1"|upper }}{{ r.user.last_name|slice:":1"|upper }}</span>
+        <span><span class="fw-semibold">{{ r.user|person }}</span>{% if not r.user.is_active %} <span class="badge-status badge-inactive">Inactive</span>{% endif %}<br>
+        <span class="small text-secondary">{{ r.profile.employee_id }} · {{ r.profile.job_title|default:r.profile.role.name }}{% if r.profile.department %} · {{ r.profile.department }}{% endif %}{% if r.profile.reporting_manager %} · reports to {{ r.profile.reporting_manager.user|person }}{% endif %}</span></span></a></td>
+      <td class="text-end">{{ r.leads_created }}</td>
+      <td class="text-end">{{ r.open_leads }}</td>
+      <td class="text-end">{{ r.visits_completed }}</td>
+      <td class="text-end">{{ r.quotations_created }}</td>
+      <td class="text-end"><span class="badge-status badge-active" title="won"><i class="bi bi-check2"></i> {{ r.deals_won }}</span> <span class="badge-status badge-danger" title="lost"><i class="bi bi-x"></i> {{ r.deals_lost }}</span></td>
+      <td class="text-end fw-semibold">{{ r.won_value|money }}</td>
+      <td>{% if r.target is not None %}<div class="d-flex align-items-center gap-2"><div class="tf-progress flex-grow-1" role="progressbar" aria-valuenow="{{ r.achievement|default:0 }}" aria-valuemin="0" aria-valuemax="100" aria-label="Target achievement"><span class="{% if r.achievement >= 100 %}tf-prog-green{% elif r.achievement >= 60 %}tf-prog-orange{% else %}tf-prog-red{% endif %}" style="width:{% if r.achievement > 100 %}100{% else %}{{ r.achievement|floatformat:0 }}{% endif %}%"></span></div><span class="small fw-semibold">{{ r.achievement }}%</span></div><div class="small text-secondary">{{ r.target_actual|money }} of {{ r.target|money }}</div>{% else %}<span class="small text-secondary">No target set</span>{% endif %}</td>
+      <td class="text-end">{% if r.overdue_tasks %}<span class="badge-status badge-danger"><i class="bi bi-exclamation-triangle"></i> {{ r.pending_followups }}</span>{% elif r.pending_followups %}<span class="badge-status badge-warning">{{ r.pending_followups }}</span>{% else %}<span class="badge-status badge-active">0</span>{% endif %}</td>
+      <td class="small text-secondary text-nowrap">{% if r.last_activity %}{{ r.last_activity|timesince }} ago{% else %}No activity recorded{% endif %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="10"><div class="tf-empty"><i class="bi bi-people"></i>No employees match these filters.</div></td></tr>
+  {% endfor %}
+  </tbody>
+  {% if rows.object_list %}<tfoot><tr class="fw-semibold"><td>Total ({{ count }})</td><td class="text-end">{{ total.leads_created }}</td><td class="text-end">{{ total.open_leads }}</td><td class="text-end">{{ total.visits_completed }}</td><td class="text-end">{{ total.quotations_created }}</td><td class="text-end">{{ total.deals_won }} / {{ total.deals_lost }}</td><td class="text-end">{{ total.won_value|money }}</td><td></td><td class="text-end">{{ total.pending_followups }}</td><td></td></tr></tfoot>{% endif %}
+</table></div>
+{% if page.has_other_pages %}<div class="card-body border-top d-flex justify-content-between small"><span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span><span>{% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">Previous</a>{% endif %}{% if page.has_next %} · <a href="{% querystring page=page.next_page_number %}">Next</a>{% endif %}</span></div>{% endif %}
+</div>
+<p class="small text-secondary mt-2">Each lead and deal counts for one employee only (the assigned Sales Engineer, else the Coordinator, else its creator), so the total row equals the sum of the rows. Won value = estimated value of opportunities won in the period. Monthly target = the "Won deals value" target set in Targets &amp; KPIs.</p>
+{% endblock %}

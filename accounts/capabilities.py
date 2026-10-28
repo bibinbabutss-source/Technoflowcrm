@@ -77,6 +77,11 @@ CAPABILITIES = [
     ("targets.view", "Targets & KPIs", "Open targets and KPIs", ALL),
     ("targets.manage", "Targets & KPIs", "Set targets and KPI definitions", MGMT),
     ("team.view", "Team", "See team-wide performance and rankings", MGMT),
+    # ---- employee performance and daily work reports (enhancement, Oct 2026)
+    ("performance.view", "Employee performance", "Open Employee Performance (your own dashboard)", SALES),
+    ("employees.monitor", "Employee performance",
+     "Monitor other employees' dashboards and daily reports (within your data scope)", [ADMIN, DIRECTOR, COORDINATOR]),
+    ("dailyreports.submit", "Employee performance", "Submit your own daily work reports", SALES),
     # ---- tasks and communications
     ("tasks.view", "Tasks", "Open tasks and follow-ups", ALL),
     ("tasks.create", "Tasks", "Create tasks and comment", ALL),
@@ -95,7 +100,9 @@ CAPABILITIES = [
     ("reports.financial", "Reports", "Invoice, collection and receivable reports", [ADMIN, DIRECTOR, ACCOUNTS]),
     # ---- notifications, import / export
     ("notifications.view", "Notifications", "Open notifications", ALL),
-    ("data.import", "Import / export", "Import customers and leads", [ADMIN, DIRECTOR, COORDINATOR]),
+    ("data.import", "Import / export", "Import from Excel for any employee in your scope (customers, leads, visits, tasks, sales)", [ADMIN, DIRECTOR, COORDINATOR]),
+    ("imports.own", "Import / export",
+     "Import your own leads, customers, visits, tasks and sales from Excel (owner = yourself)", SALES),
     ("data.export", "Import / export", "Export to Excel and CSV", ALL),
     # ---- administration
     ("users.manage", "Administration", "Manage user accounts", [ADMIN]),

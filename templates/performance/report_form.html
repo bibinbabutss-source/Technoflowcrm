@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Daily report{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>{% if report %}Edit daily report{% else %}New daily report{% endif %}</h1>
+  <p>Describe your day in your own words. This report is self-reported; the CRM separately records what you did in the system.</p></div></div>
+<form method="post" novalidate>{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <div class="card"><div class="card-body"><div class="row">
+    <div class="col-md-3">{% with field=form.report_date %}{% include "partials/field.html" %}{% endwith %}</div>
+  </div>
+  <div class="row">{% for field in form %}{% if field.name != "report_date" %}<div class="col-md-6">{% include "partials/field.html" %}</div>{% endif %}{% endfor %}</div></div></div>
+
+  <div class="card mt-3" data-formset="{{ entries.prefix }}">
+    <div class="card-header d-flex justify-content-between align-items-center">Activities (optional) <button class="btn btn-sm btn-outline-primary" type="button" data-formset-add><i class="bi bi-plus-lg me-1"></i>Add activity</button></div>
+    {{ entries.management_form }}
+    {% if entries.non_form_errors %}<div class="alert alert-danger m-3">{{ entries.non_form_errors }}</div>{% endif %}
+    <div class="table-responsive"><table class="table table-sm align-top mb-0">
+      <thead><tr><th>Activity type</th><th>Customer</th><th>Lead</th><th>What you did</th><th>Outcome</th><th></th></tr></thead>
+      <tbody data-formset-body>{% for f in entries %}{% include "performance/_entry_row.html" %}{% endfor %}</tbody></table></div>
+    <template>{% with f=entries.empty_form %}{% include "performance/_entry_row.html" %}{% endwith %}</template>
+  </div>
+  <div class="d-flex flex-wrap gap-2 mt-3">
+    <button class="btn btn-primary" type="submit" name="action" value="submit"><i class="bi bi-send me-1"></i>{% if report and report.status != "draft" %}Save changes{% else %}Submit report{% endif %}</button>
+    {% if not report or report.status == "draft" %}<button class="btn btn-outline-primary" type="submit" name="action" value="draft">Save as draft</button>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% if report %}{{ report.get_absolute_url }}{% else %}{% url 'dailyreports:list' %}{% endif %}">Cancel</a></div>
+  <p class="small text-secondary mt-2">You can change a report until your manager marks it as reviewed. Every change is kept in the audit log.</p>
+</form>
+{% endblock %}

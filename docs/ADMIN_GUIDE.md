@@ -25,12 +25,20 @@ in [DEPLOYMENT.md](DEPLOYMENT.md); this guide covers daily administration and ru
 - **Deactivate** instead of deleting: history stays, the person can no longer sign in, the seat is freed.
   Reassign their open leads/customers first (edit the records or use the list filters).
 - **Reset password** sets a temporary password and signs the person out everywhere.
+- **Email a password-reset link** sends the employee a one-time link that expires, so they choose their own
+  password. Nobody, including administrators, can see a password. This needs the e-mail settings (SMTP) to
+  be filled in.
 - **Unlock sign-in** clears a lockout after too many wrong passwords.
 - **Reset two-step sign-in** if someone lost the phone with their authenticator app.
 - **Login history** shows successful and failed sign-ins with IP address.
 
 **Roles & Limits**: account limit, data scope (all / team / own) and the capability checklist per role.
 The last active System Administrator cannot be deactivated or moved to another role.
+
+**Employee Performance, Daily Reports, Import from Excel**: who may use them is set by the permissions
+`performance.view`, `employees.monitor`, `dailyreports.submit`, `imports.own` and `data.import`
+(Roles & Limits). Set monthly **"Won deals value"** targets in Targets & KPIs to show the target bars. See
+`docs/ENHANCEMENT_REPORT.md` for the rules and for the rollback step (switch that KPI off before rolling back).
 
 **Audit log**: every create, change, delete, approval, sign-in and settings change, with before/after values.
 It cannot be edited. Filter and export to CSV.

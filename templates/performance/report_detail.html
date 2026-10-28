@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ report }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'dailyreports:list' %}">Daily Reports</a></li><li class="breadcrumb-item active">{{ report.report_date|date:"d M Y" }}</li></ol></nav>
+<div class="tf-page-head"><div><h1>{{ report.employee|person }} · {{ report.report_date|date:"l d M Y" }}</h1>
+  <p><span class="badge-status {% if report.status == 'reviewed' %}badge-active{% elif report.status == 'submitted' %}badge-info{% else %}badge-inactive{% endif %}">{{ report.get_status_display }}</span>
+  {% if report.submitted_at %} · submitted {{ report.submitted_at|date:"d M Y H:i" }}{% endif %}{% if report.reviewed_by %} · reviewed by {{ report.reviewed_by|person }} {{ report.reviewed_at|date:"d M Y H:i" }}{% endif %}</p></div>
+  <div class="tf-actions">{% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'dailyreports:edit' report.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>{% if report.status == "draft" %}<form method="post" action="{% url 'dailyreports:delete' report.pk %}" data-confirm="Delete this draft report?">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button></form>{% endif %}{% endif %}</div></div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="tf-self-reported mb-3"><i class="bi bi-person-lines-fill me-1"></i><b>Self-reported by the employee.</b> Not independently verified.</div>
+    <div class="card"><div class="card-body"><dl class="row mb-0 small">
+      <dt class="col-sm-4">Calls and follow-ups</dt><dd class="col-sm-8">{{ report.calls_followups|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-sm-4">Visits and meeting outcomes</dt><dd class="col-sm-8">{{ report.visits_outcomes|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-sm-4">Quotations prepared</dt><dd class="col-sm-8">{{ report.quotations_prepared|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-sm-4">Opportunities progressed</dt><dd class="col-sm-8">{{ report.opportunities_progressed|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-sm-4">Tasks completed</dt><dd class="col-sm-8">{{ report.tasks_completed|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-sm-4">Pending work</dt><dd class="col-sm-8">{{ report.pending_work|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-sm-4">Challenges or remarks</dt><dd class="col-sm-8">{{ report.challenges|linebreaksbr|default:"—" }}</dd>
+      <dt class="col-sm-4">Plan for the next working day</dt><dd class="col-sm-8">{{ report.next_day_plan|linebreaksbr|default:"—" }}</dd>
+    </dl></div></div>
+    <div class="card mt-3"><div class="card-header">Activities</div><div class="table-responsive"><table class="table table-sm mb-0 small">
+      <thead><tr><th>Type</th><th>Customer / lead</th><th>What</th><th>Outcome</th></tr></thead>
+      <tbody>{% for e in entries %}<tr><td>{{ e.get_kind_display }}</td><td>{% if e.customer %}{{ e.customer.company_name }}{% elif e.lead %}{{ e.lead.code }} {{ e.lead.company_name }}{% else %}—{% endif %}</td><td>{{ e.description }}</td><td>{{ e.outcome|default:"—" }}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">No activity lines.</td></tr>{% endfor %}</tbody></table></div></div>
+    {% if report.review_comment %}<div class="card mt-3"><div class="card-header">Manager's comment</div><div class="card-body small">{{ report.review_comment|linebreaksbr }}</div></div>{% endif %}
+    <details class="card mt-3" id="history"><summary class="card-header">Change history <span class="small text-secondary">({{ history|length }} recorded change{{ history|length|pluralize }} · kept permanently)</span></summary>
+      <ul class="list-group list-group-flush small">{% for h in history %}<li class="list-group-item"><div><b>{{ h.when|date:"d M Y H:i" }}</b> · {{ h.user|default:"System" }} · {{ h.action }} {{ h.what|lower }}</div>
+        {% for label, old, new in h.changes %}<div class="text-secondary">{{ label }}: {% if old %}<s>{{ old|truncatechars:80 }}</s> → {% endif %}{{ new|default:"(empty)"|truncatechars:80 }}</div>{% endfor %}</li>
+      {% empty %}<li class="list-group-item text-secondary">No changes recorded.</li>{% endfor %}</ul></details>
+    {% if can_review %}<div class="card mt-3 border-primary"><div class="card-header">Review</div><div class="card-body"><form method="post">{% csrf_token %}{{ form.review_comment }}<button class="btn btn-primary mt-2" type="submit"><i class="bi bi-check2 me-1"></i>Mark as reviewed</button></form><div class="small text-secondary mt-1">After review the employee can no longer change this report.</div></div></div>{% endif %}
+  </div>
+  <div class="col-lg-4"><div class="card"><div class="card-header">Recorded by the CRM on this day</div><ul class="list-group list-group-flush small">
+    <li class="list-group-item d-flex justify-content-between"><span>Leads created</span><b>{{ tracked.leads.created }}</b></li>
+    <li class="list-group-item d-flex justify-content-between"><span>Leads progressed</span><b>{{ tracked.leads.progressed }}</b></li>
+    <li class="list-group-item d-flex justify-content-between"><span>Calls logged</span><b>{{ tracked.activity.calls }}</b></li>
+    <li class="list-group-item d-flex justify-content-between"><span>Visits completed</span><b>{{ tracked.visits.completed }}</b></li>
+    <li class="list-group-item d-flex justify-content-between"><span>Quotations created / sent</span><b>{{ tracked.sales.quotations_created }} / {{ tracked.sales.quotations_sent }}</b></li>
+    <li class="list-group-item d-flex justify-content-between"><span>Opportunities progressed</span><b>{{ tracked.activity.opportunities_progressed }}</b></li>
+    <li class="list-group-item d-flex justify-content-between"><span>Deals won</span><b>{{ tracked.sales.won }}</b></li>
+    <li class="list-group-item d-flex justify-content-between"><span>Tasks completed</span><b>{{ tracked.followups.tasks_completed }}</b></li>
+  </ul><div class="card-body small text-secondary border-top">Taken from CRM records dated this day, for comparison with the report.</div></div></div>
+</div>
+{% endblock %}

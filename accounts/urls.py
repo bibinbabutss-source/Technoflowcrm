@@ -33,6 +33,7 @@ urlpatterns = [
     path("users/<int:pk>/toggle-active/", views.user_toggle_active, name="user_toggle_active"),
     path("users/<int:pk>/unlock/", views.user_unlock, name="user_unlock"),
     path("users/<int:pk>/reset-password/", views.user_reset_password, name="user_reset_password"),
+    path("users/<int:pk>/send-reset-link/", views.user_send_reset_link, name="user_send_reset_link"),
     path("roles/", views.role_list, name="role_list"),
     path("roles/<int:pk>/", views.role_edit, name="role_edit"),
 ]

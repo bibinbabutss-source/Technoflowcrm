@@ -30,6 +30,8 @@ DESCRIPTIONS = {
     "opportunities_won": "Opportunities moved to Won in the period (assigned Sales Engineer).",
     "conversion_rate": "Leads won ÷ leads closed (won + lost) in the period × 100.",
     "followup_completion": "Tasks due in the period completed on or before their due date ÷ tasks due × 100.",
+    "won_value": "Estimated value of opportunities moved to Won in the period (by closing date), owner = assigned "
+                 "Sales Engineer, else Sales Coordinator, else who created it. Includes imported completed sales.",
 }
 
 

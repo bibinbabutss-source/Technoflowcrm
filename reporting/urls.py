@@ -10,6 +10,7 @@ urlpatterns = [
     path("dashboard/chart/<slug:key>/", views.chart_json, name="chart"),
     path("search/", views.global_search, name="search"),
     path("import/", import_views.import_start, name="import_start"),
+    path("import/template/<slug:kind>.xlsx", import_views.import_template, name="import_template"),
     path("import/<int:pk>/", import_views.import_detail, name="import_detail"),
     path("import/<int:pk>/run/", import_views.import_run, name="import_run"),
     path("import/<int:pk>/problems.csv", import_views.import_errors, name="import_errors"),

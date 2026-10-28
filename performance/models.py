@@ -64,3 +64,80 @@ class SalesTarget(TimeStampedModel):
         if self.kpi_id and self.kpi.unit == "percent" and self.target_value is not None and \
                 self.target_value > Decimal(100):
             raise ValidationError({"target_value": "A percentage target cannot exceed 100."})
+
+
+class DailyReport(TimeStampedModel):
+    """
+    An employee's own daily work report. SELF-REPORTED: shown separately from the activity the CRM records
+    automatically and never counted as verified CRM activity. One report per employee per day.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SUBMITTED = "submitted", "Submitted"
+        REVIEWED = "reviewed", "Reviewed"
+
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="daily_reports")
+    report_date = models.DateField("Date")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    calls_followups = models.TextField("Calls and follow-ups", blank=True)
+    visits_outcomes = models.TextField("Customer visits and meeting outcomes", blank=True)
+    quotations_prepared = models.TextField("Quotations prepared", blank=True)
+    opportunities_progressed = models.TextField("Opportunities progressed", blank=True)
+    tasks_completed = models.TextField("Tasks completed", blank=True)
+    pending_work = models.TextField("Pending work", blank=True)
+    challenges = models.TextField("Challenges or remarks", blank=True)
+    next_day_plan = models.TextField("Plan for the next working day", blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True, editable=False)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+                                    related_name="+", editable=False)
+    reviewed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    review_comment = models.TextField("Manager's comment", blank=True)
+
+    class Meta:
+        ordering = ["-report_date", "employee__first_name"]
+        constraints = [models.UniqueConstraint(fields=["employee", "report_date"], name="uniq_daily_report")]
+        indexes = [models.Index(fields=["employee", "report_date"])]
+
+    def __str__(self):
+        name = self.employee.get_full_name() or self.employee.username
+        return f"Daily report {name} {self.report_date:%d-%b-%Y}"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("dailyreports:detail", args=[self.pk])
+
+    @property
+    def is_editable(self):
+        return self.status != self.Status.REVIEWED
+
+
+class DailyReportEntry(models.Model):
+    """One activity line of a daily report (self-reported)."""
+
+    class Kind(models.TextChoices):
+        CALL = "call", "Call"
+        FOLLOW_UP = "follow_up", "Follow-up"
+        VISIT = "visit", "Customer visit"
+        MEETING = "meeting", "Meeting"
+        EMAIL = "email", "Email / WhatsApp"
+        QUOTATION = "quotation", "Quotation"
+        OPPORTUNITY = "opportunity", "Opportunity"
+        TASK = "task", "Task"
+        OTHER = "other", "Other"
+
+    report = models.ForeignKey(DailyReport, on_delete=models.CASCADE, related_name="entries")
+    position = models.PositiveSmallIntegerField(default=0)
+    kind = models.CharField("Activity type", max_length=20, choices=Kind.choices)
+    customer = models.ForeignKey("customers.Customer", null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="+")
+    lead = models.ForeignKey("leads.Lead", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    description = models.CharField(max_length=300)
+    outcome = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["position", "pk"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()}: {self.description[:40]}"

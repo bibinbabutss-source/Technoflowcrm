@@ -175,6 +175,7 @@ KPI_CODES = [
     ("opportunities_won", "Opportunities won", "count"),
     ("conversion_rate", "Lead conversion rate", "percent"),
     ("followup_completion", "Follow-ups completed on time", "percent"),
+    ("won_value", "Won deals value", "amount"),
 ]
 KPI_INFO = {code: (label, unit) for code, label, unit in KPI_CODES}
 
@@ -224,6 +225,11 @@ def kpi_actual(code, ids, start, end):
         on_time = sum(1 for t in due.filter(status="completed") if t.completed_at and
                       timezone.localtime(t.completed_at).date() <= t.due_date)
         return (Decimal(on_time) / Decimal(total) * 100).quantize(Decimal("0.1"))
+    if code == "won_value":
+        from performance.monitoring import owned
+
+        qs = Opportunity.objects.filter(stage__is_won=True, closed_at__date__gte=start, closed_at__date__lte=end)
+        return _sum(owned(qs, "opportunity", ids), "estimated_value")
     raise ValueError(f"Unknown KPI {code}")
 
 

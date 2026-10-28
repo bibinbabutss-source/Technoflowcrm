@@ -12,6 +12,7 @@ button described here is missing, your role does not have that permission — as
 5. [Module reference](#5-module-reference)
 6. [Reports, exports and import](#6-reports-exports-and-import)
 7. [Good habits](#7-good-habits)
+8. [Employee Performance and Daily Reports](#8-employee-performance-and-daily-reports)
 
 ---
 
@@ -170,9 +171,18 @@ Click any card, bar or point to open the records behind the number.
 - The four money measures are kept separate on purpose:
   *Quotations issued* (sent to customers) · *Orders booked* (confirmed orders, excl. VAT) ·
   *Invoiced* (issued invoices, incl. VAT) · *Collected* (payments received, net of reversals).
-- **Import** (Settings → Import data, if allowed): upload an Excel or CSV file of customers or leads,
-  match the columns, check the preview (errors and duplicates are flagged), then import. Existing records are
-  never changed; rows with problems can be downloaded as a CSV to fix and re-import.
+- **Import from Excel** (menu): choose what you are importing — customers, leads, customer visits,
+  follow-ups/tasks, or opportunities and completed sales.
+  1. Download the template for that type. Its *Instructions* sheet lists the allowed values.
+  2. Fill it in and upload it.
+  3. Check the preview. Every row shows **New**, **Update**, **Duplicate** or **Error**, with the reason and the
+     Excel row number.
+  4. Click **Import**. Nothing is saved before you confirm, and if anything fails, nothing is saved at all.
+  - Salespeople import their own records. Managers and administrators name the employee in the file.
+  - Dates in the file (date received, visit date, closing date) are kept.
+  - Uploading the same file again adds nothing.
+  - A deal becomes *Won* only when its Status / stage column says Won.
+  - Rows that were not imported can be downloaded as a CSV, with the reason, to fix and upload again.
 
 ## 7. Good habits
 
@@ -181,3 +191,23 @@ Click any card, bar or point to open the records behind the number.
 - Never share your password; turn on two-step sign-in.
 - If something looks wrong, note the record number and tell the System Administrator — the audit log shows
   who changed what and when.
+
+## 8. Employee Performance and Daily Reports
+
+**Employee Performance** (menu → Work):
+- **Managers** see everyone they manage: leads, visits, quotations, deals won and lost, won value, monthly
+  target progress, pending follow-ups and overdue tasks.
+  - Choose a period: *Today, Yesterday, This week, Last week, This month, Last month* or your own dates.
+  - Filter by employee, designation, department, reporting manager or status, and sort by any column.
+  - Click a name to open that person's dashboard. Excel/CSV export follows your export permission.
+- **Salespeople** see only their own dashboard.
+- Figures marked **now** show today's situation and do not change with the period.
+
+**Daily Reports** (menu → Work):
+- Click **Write today's report**. Fill in what you did, then add activity lines if you like.
+- Click **Submit**, or **Save as draft**. Drafts are private.
+- You can change a submitted report until your manager marks it **reviewed**. Every change is recorded and
+  shown under *Change history*.
+- Reports are **self-reported**. Each report page shows them next to the figures the CRM recorded that
+  day, so the two can be compared.
+- Managers see a summary for the week or month, showing reports submitted and working days missing.

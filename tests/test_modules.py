@@ -27,7 +27,7 @@ LIST_PAGES = {
     "documents:list": "documents.view", "reporting:index": "reports.view", "notifications:list": "notifications.view",
     "core:settings_home": "settings.manage", "core:settings_workflow": "settings.manage",
     "core:tax_rates": "settings.manage", "core:audit_log": "audit.view", "accounts:user_list": "users.manage",
-    "reporting:import_start": "data.import", "performance:kpis": "targets.manage",
+    "reporting:import_start": ("data.import", "imports.own"),  # either one (Oct 2026 enhancement) "performance:kpis": "targets.manage",
     "customers:create": "customers.create", "leads:create": "leads.create", "quotations:create": "quotations.edit",
     "invoicing:payment_create": "payments.manage",
 }
@@ -44,7 +44,8 @@ def test_every_page_allows_or_refuses_by_capability(role, make_user, login):
         r = client.get(url, follow=False)
         if r.status_code == 302 and name == "tasks:list":
             r = client.get(r["Location"])
-        expected = 200 if cap in codes else 403
+        allowed = any(c in codes for c in cap) if isinstance(cap, tuple) else cap in codes
+        expected = 200 if allowed else 403
         if r.status_code != expected:
             problems.append(f"{name}: got {r.status_code}, expected {expected}")
     assert not problems, problems
@@ -123,7 +124,7 @@ def test_import_previews_and_never_overwrites(make_user, login):
     assert batch.mapping["company_name"] == 0 and batch.mapping["email"] == 1
     r = c.post(detail, {"map_company_name": "0", "map_email": "1", "map_city": "2"})
     batch.refresh_from_db()
-    assert batch.summary == {"total": 4, "ok": 1, "duplicates": 2, "errors": 1}
+    assert batch.summary == {"total": 4, "ok": 1, "new": 1, "updates": 0, "duplicates": 2, "errors": 1}
     c.post(reverse("reporting:import_run", args=[batch.pk]))
     assert Customer.objects.filter(company_name="New Import LLC").count() == 1
     assert Customer.objects.get(company_name="Existing Co LLC").city == ""  # not overwritten

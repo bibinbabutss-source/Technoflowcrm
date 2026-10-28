@@ -67,6 +67,15 @@ invoiced 102,900, collected 10,000, outstanding 92,900. **Passed.**
 "Crawl only" means the page or form opened without error for each role (and the action is built on the same
 tested services), but submitting it was not exercised by a test.
 
+## Update 28-Oct-2026: Employee Performance, Daily Reports, Excel Import Center
+Added without changing existing features. Full details, rules, permissions and test results are in
+`docs/ENHANCEMENT_REPORT.md`.
+- 201 automated tests passed (SQLite and PostgreSQL).
+- Crawl: 1,137 pages, 0 errors.
+- Browser checks: 62 of 62 (new pages) and 77 of 77 (original).
+- Six problems found during testing were fixed.
+- Not deployed to the live site yet.
+
 ## Update 28-Oct-2026: quotation format and logo
 Quotations now print in Technoflow's own format (cover letter, price schedule, commercial terms), every section
 is editable in the CRM, a Word export was added, and the official logo replaced the old one. Details, tests

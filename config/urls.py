@@ -26,6 +26,8 @@ urlpatterns = [
     path("orders/", include("orders.urls")),
     path("invoices/", include("invoicing.urls")),
     path("targets/", include("performance.urls")),
+    path("team/", include("performance.team_urls")),
+    path("daily-reports/", include("performance.report_urls")),
     path("documents/", include("documents.urls")),
     path("notifications/", include("notifications.urls")),
     path("", include("reporting.urls")),

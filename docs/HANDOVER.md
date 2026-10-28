@@ -42,6 +42,16 @@ can continue without the original conversation.
 
 ## Test status at delivery
 
+**Update 28-Oct-2026 (Employee Performance, Daily Reports, Excel Import Center — see
+docs/ENHANCEMENT_REPORT.md):**
+- 201 automated tests passed on SQLite and on PostgreSQL 16.
+- Page crawl: 1,137 pages with 0 errors.
+- New-page browser checks: 62 of 62 passed. Original browser test: 77 of 77 passed.
+- Upgrade and rollback rehearsed on a local copy.
+- **Not yet deployed to Render.**
+
+Earlier status:
+
 - **156 automated tests** passed on both SQLite and PostgreSQL 16 (after the 28-Oct quotation format and
   logo update — see docs/QUOTATION_LOGO_UPDATE.md).
 - **Page crawl:** every page reachable from the menus, for every role, with 0 server errors.

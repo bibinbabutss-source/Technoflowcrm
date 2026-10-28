@@ -288,5 +288,26 @@ class Command(BaseCommand):
         for kpi in KPIDefinition.objects.filter(is_active=True):
             SalesTarget.objects.get_or_create(employee=eng, kpi=kpi, period_type="month", period_start=month_start,
                                               defaults={"target_value": defaults[kpi.unit]})
+
+        # daily work reports (self-reported, fictional): one reviewed, one submitted, one draft
+        from performance.models import DailyReport
+
+        _as(eng)
+        workdays = [d for d in (today - datetime.timedelta(days=n) for n in range(1, 8)) if d.weekday() < 5][:2]
+        for n, day in enumerate(workdays):
+            rep = DailyReport.objects.create(
+                employee=eng, report_date=day, status="submitted", submitted_at=timezone.now(),
+                calls_followups="Called two customers about pending quotations (demo).",
+                visits_outcomes="Site visit, requirements noted (demo).", pending_work="Revise one quotation.",
+                next_day_plan="Follow up on open quotations.")
+            rep.entries.create(kind="call", customer=customers[n], description="Follow-up call",
+                               outcome="Customer asked for a revised offer", position=0)
+            if n == 1:
+                rep.status, rep.reviewed_by, rep.reviewed_at = "reviewed", coord, timezone.now()
+                rep.review_comment = "Thanks, good detail (demo)."
+                rep.save()
+        DailyReport.objects.create(employee=eng, report_date=today, status="draft",
+                                   calls_followups="Draft in progress (demo).")
+        counts["daily reports"] = len(workdays) + 1
         assert Payment.objects.count() == counts["payments"]
         return counts

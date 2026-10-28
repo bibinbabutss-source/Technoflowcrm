@@ -18,11 +18,14 @@ NAV_SECTIONS = [
         ("Collections", "cash-coin", "invoicing:collections", "collections.view"),
     ]),
     ("Work", [
+        ("Employee Performance", "person-lines-fill", "team:list", "performance.view"),
+        ("Daily Reports", "journal-check", "dailyreports:list", "performance.view"),
         ("Targets & KPIs", "bullseye", "performance:overview", "targets.view"),
         ("Tasks & Follow-ups", "check2-square", "tasks:list", "tasks.view"),
         ("Communication History", "chat-left-text", "communications:list", "communications.view"),
         ("Documents", "folder2-open", "documents:list", "documents.view"),
         ("Reports", "bar-chart-line", "reporting:index", "reports.view"),
+        ("Import from Excel", "file-earmark-arrow-up", "reporting:import_start", "imports.own"),
         ("Notifications", "bell", "notifications:list", "notifications.view"),
     ]),
     ("Administration", [

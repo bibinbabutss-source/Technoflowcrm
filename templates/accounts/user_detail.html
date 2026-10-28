@@ -57,6 +57,9 @@
         {% with field=reset_form.temporary_password %}{% include "partials/field.html" %}{% endwith %}
         <button class="btn btn-outline-primary" type="submit">Set temporary password</button>
       </form>
+      <hr><form method="post" action="{% url 'accounts:user_send_reset_link' profile.pk %}" data-confirm="Email {{ profile.full_name }} a link to choose a new password?">{% csrf_token %}
+        <button class="btn btn-outline-primary" type="submit" {% if not profile.user.email %}disabled{% endif %}><i class="bi bi-envelope me-1"></i>Email a password-reset link</button>
+        <div class="form-text">The employee chooses the new password; nobody else ever sees it. Needs email to be set up.</div></form>
     </div></div>
     {% endif %}
   </div>

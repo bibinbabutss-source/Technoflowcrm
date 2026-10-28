@@ -8,5 +8,5 @@
   <li class="nav-item"><a class="nav-link {% if tab == 'numbering' %}active{% endif %}" href="{% url 'core:numbering' %}">Document numbering</a></li>
   <li class="nav-item"><a class="nav-link {% if tab == 'lookups' %}active{% endif %}" href="{% url 'core:lookups' %}">Drop-down lists</a></li>
   <li class="nav-item"><a class="nav-link" href="{% url 'accounts:role_list' %}">Roles &amp; limits</a></li>
-  {% if "data.import" in crm_caps %}<li class="nav-item"><a class="nav-link" href="{% url 'reporting:import_start' %}">Import data</a></li>{% endif %}
+  {% if "data.import" in crm_caps %}<li class="nav-item"><a class="nav-link" href="{% url 'reporting:import_start' %}">Import from Excel</a></li>{% endif %}
 </ul>

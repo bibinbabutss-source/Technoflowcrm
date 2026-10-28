@@ -1,0 +1,119 @@
+{% extends "base.html" %}{% load crm static %}
+{% block title %}{{ emp|person }} · Performance{% endblock %}
+{% block content %}
+{% if can_monitor %}<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'team:list' %}?period={{ preset }}">Employee Performance</a></li><li class="breadcrumb-item active">{{ emp|person }}</li></ol></nav>{% endif %}
+<div class="tf-page-head"><div class="d-flex align-items-center gap-3">
+  <span class="tf-avatar-lg" aria-hidden="true">{{ emp.first_name|slice:":1"|upper }}{{ emp.last_name|slice:":1"|upper }}</span>
+  <div><h1 class="mb-0">{{ emp|person }}{% if is_self %} <small class="text-secondary fs-6">(you)</small>{% endif %}{% if not emp.is_active %} <span class="badge-status badge-inactive align-middle">Inactive</span>{% endif %}</h1>
+  <p class="mb-0">{{ profile.employee_id }} · {{ profile.job_title|default:profile.role.name }}{% if profile.department %} · {{ profile.department }}{% endif %}{% if profile.reporting_manager %} · reports to {{ profile.reporting_manager.user|person }}{% endif %}</p></div></div>
+  <div class="tf-actions">{% if is_self and "dailyreports.submit" in crm_caps %}<a class="btn btn-primary" href="{% url 'dailyreports:new' %}"><i class="bi bi-journal-plus me-1"></i>Write today's report</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'dailyreports:list' %}?employee={{ emp.pk }}&amp;period={{ preset }}{% if preset == 'custom' %}&amp;start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% endif %}"><i class="bi bi-journal-check me-1"></i>Daily reports</a></div></div>
+
+{% include "performance/_period.html" %}
+
+{% with s=d.sales %}
+<div class="row g-3">
+  {% include "performance/_kpi.html" with color="green" icon="trophy" label="Won value" value=s.won_value|money sub=text.won_lost %}
+  {% include "performance/_kpi.html" with color="blue" icon="funnel" label="Leads created" value=d.leads.created sub="" %}
+  {% include "performance/_kpi.html" with color="brand" icon="geo-alt" label="Visits completed" value=d.visits.completed %}
+  {% include "performance/_kpi.html" with color="blue" icon="file-earmark-text" label="Quotations" value=s.quotations_created sub="created in period" %}
+  {% include "performance/_kpi.html" with color="blue" icon="kanban" label="Pipeline" value=s.pipeline_value|money now=True %}
+  {% if d.followups.tasks_overdue_now %}{% include "performance/_kpi.html" with color="red" icon="alarm" label="Overdue tasks" value=d.followups.tasks_overdue_now now=True %}{% else %}{% include "performance/_kpi.html" with color="green" icon="check2-circle" label="Overdue tasks" value=0 now=True %}{% endif %}
+</div>
+
+<div class="card mt-3"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center"><div class="fw-semibold"><i class="bi bi-bullseye me-1"></i>Monthly target · {{ s.month_start|date:"F Y" }} (Won deals value)</div>
+    <div class="small">{% if s.target is not None %}{{ s.target_actual|money }} of {{ s.target|money }} · <b>{{ s.achievement }}%</b>{% else %}<span class="text-secondary">No target set for this month{% if "targets.manage" in crm_caps %} — <a href="{% url 'performance:set_targets' %}?employee={{ emp.pk }}">set one</a>{% endif %}</span>{% endif %}</div></div>
+  {% if s.target is not None %}<div class="tf-progress mt-2" style="height:.8rem" role="progressbar" aria-valuenow="{{ s.achievement|default:0 }}" aria-valuemin="0" aria-valuemax="100" aria-label="Target achievement"><span class="{% if s.achievement >= 100 %}tf-prog-green{% elif s.achievement >= 60 %}tf-prog-orange{% else %}tf-prog-red{% endif %}" style="width:{% if s.achievement > 100 %}100{% else %}{{ s.achievement|floatformat:0 }}{% endif %}%"></span></div>{% endif %}
+</div></div>
+{% endwith %}
+
+<div class="card mt-3"><div class="card-header">Activity in the period <span class="small text-secondary fw-normal">— recorded automatically by the CRM</span></div><div class="card-body">
+  <div style="position:relative;height:220px"><canvas id="act-chart" aria-label="Leads, visits and quotations per {% if d.chart.labels|length > 62 %}month{% else %}day{% endif %}" role="img"></canvas></div>
+  <div class="row g-2 mt-2 small">
+    <div class="col-6 col-md-3">Leads progressed: <b>{{ d.leads.progressed }}</b></div>
+    <div class="col-6 col-md-3">Calls logged: <b>{{ d.activity.calls }}</b> <span class="text-secondary">({{ d.activity.communications }} contacts)</span></div>
+    <div class="col-6 col-md-3">Opportunities progressed: <b>{{ d.activity.opportunities_progressed }}</b></div>
+    <div class="col-6 col-md-3">Daily reports submitted: <b>{{ d.activity.daily_reports }}</b> <span class="text-secondary">(self-reported)</span></div>
+  </div>
+</div></div>
+{{ d.chart|json_script:"act-data" }}
+
+<div class="tf-section-title"><i class="bi bi-funnel"></i>Leads</div>
+<div class="row g-3">
+  {% include "performance/_kpi.html" with color="blue" icon="plus-circle" label="Created" value=d.leads.created sub="by this employee" %}
+  {% include "performance/_kpi.html" with color="blue" icon="person-check" label="Assigned" value=d.leads.assigned sub="owned, created in period" %}
+  {% include "performance/_kpi.html" with color="orange" icon="hourglass" label="Open" value=d.leads.open_now now=True sub=text.open_breakdown %}
+  {% include "performance/_kpi.html" with color="brand" icon="star" label="Qualified" value=d.leads.qualified_now now=True %}
+  {% include "performance/_kpi.html" with color="green" icon="arrow-right-circle" label="Converted" value=d.leads.converted sub="to customer / opportunity" %}
+  {% include "performance/_kpi.html" with color="green" icon="percent" label="Conversion" value=text.conversion sub=text.lead_won_lost|add:" lost" %}
+</div>
+<div class="row g-3 mt-0">
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">By source <span class="small text-secondary fw-normal">(period)</span></div><ul class="list-group list-group-flush small">{% for r in d.leads.by_source %}<li class="list-group-item d-flex justify-content-between"><span>{{ r.source__value|default:"No source" }}</span><b>{{ r.n }}</b></li>{% empty %}<li class="list-group-item text-secondary">No leads in the period.</li>{% endfor %}</ul></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">By status <span class="badge-status badge-inactive">now</span></div><ul class="list-group list-group-flush small">{% for r in d.leads.by_status %}<li class="list-group-item d-flex justify-content-between"><span>{{ r.stage__name }}</span><b>{{ r.n }}</b></li>{% empty %}<li class="list-group-item text-secondary">No leads.</li>{% endfor %}</ul></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Needing follow-up <span class="badge-status badge-inactive">now</span></div><ul class="list-group list-group-flush small">{% for l in d.leads.needs_followup %}<li class="list-group-item d-flex justify-content-between gap-2"><a href="{{ l.get_absolute_url }}">{{ l.code }} {{ l.title|truncatechars:30 }}</a><span class="badge-status {% if l.next_follow_up < today %}badge-danger{% else %}badge-warning{% endif %} text-nowrap">{{ l.next_follow_up|date:"d M" }}</span></li>{% empty %}<li class="list-group-item text-secondary">Nothing due.</li>{% endfor %}</ul></div></div>
+</div>
+
+<div class="tf-section-title"><i class="bi bi-geo-alt"></i>Customer visits</div>
+<div class="row g-3">
+  {% include "performance/_kpi.html" with color="blue" icon="calendar" label="Scheduled" value=d.visits.scheduled sub="visits dated in period" %}
+  {% include "performance/_kpi.html" with color="green" icon="check2-circle" label="Completed" value=d.visits.completed %}
+  {% include "performance/_kpi.html" with color="orange" icon="calendar-event" label="Upcoming" value=d.visits.upcoming_now now=True %}
+  {% include "performance/_kpi.html" with color="red" icon="calendar-x" label="Missed" value=d.visits.missed sub="date passed, not completed" %}
+  {% include "performance/_kpi.html" with color="red" icon="x-circle" label="Cancelled" value=d.visits.cancelled %}
+</div>
+<div class="card mt-3"><div class="table-responsive"><table class="table table-sm align-top mb-0 small">
+  <thead><tr><th>Date</th><th>Customer</th><th>Related</th><th>Purpose</th><th>Status</th><th>Outcome / notes</th><th>Next follow-up</th></tr></thead>
+  <tbody>{% for v in d.visits.rows %}<tr>
+    <td class="text-nowrap"><a href="{{ v.get_absolute_url }}">{{ v.visit_date|date:"d M Y" }}</a><br><span class="text-secondary">{{ v.start_time|time:"H:i" }}–{{ v.end_time|time:"H:i" }}</span></td>
+    <td>{{ v.customer.company_name }}</td>
+    <td>{% if v.opportunity %}{{ v.opportunity.code }}{% elif v.lead %}{{ v.lead.code }}{% else %}—{% endif %}</td>
+    <td>{{ v.purpose|default:"—" }}</td>
+    <td>{% if v.status == "completed" %}<span class="badge-status badge-active"><i class="bi bi-check2"></i> Completed</span>{% elif v.status == "cancelled" %}<span class="badge-status badge-danger">Cancelled</span>{% elif v.is_missed %}<span class="badge-status badge-danger"><i class="bi bi-exclamation-triangle"></i> Missed</span>{% else %}<span class="badge-status badge-info">{{ v.get_status_display }}</span>{% endif %}</td>
+    <td>{{ v.meeting_notes|default:v.agenda|truncatechars:120|default:"—" }}</td>
+    <td class="text-nowrap">{{ v.next_follow_up_date|date:"d M Y"|default:"—" }}</td></tr>
+  {% empty %}<tr><td colspan="7"><div class="tf-empty py-3">No visits in this period.</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+
+{% with s=d.sales %}
+<div class="tf-section-title"><i class="bi bi-graph-up-arrow"></i>Sales</div>
+<div class="row g-3">
+  {% include "performance/_kpi.html" with color="blue" icon="file-earmark-plus" label="Quotations created" value=s.quotations_created %}
+  {% include "performance/_kpi.html" with color="blue" icon="send" label="Quotations sent" value=s.quotations_sent %}
+  {% include "performance/_kpi.html" with color="orange" icon="hourglass-split" label="Pending" value=s.quotations_pending_now now=True sub="draft or awaiting approval" %}
+  {% include "performance/_kpi.html" with color="green" icon="hand-thumbs-up" label="Approved" value=s.approved sub=text.rejected %}
+  {% include "performance/_kpi.html" with color="blue" icon="lightbulb" label="Opportunities" value=s.opportunities_created sub="created in period" %}
+  {% include "performance/_kpi.html" with color="green" icon="cash-stack" label="Average deal" value=text.average_deal %}
+</div>
+<div class="row g-3 mt-0">
+  <div class="col-lg-8"><div class="card h-100"><div class="card-header">Deals won in the period</div><div class="table-responsive"><table class="table table-sm mb-0 small">
+    <thead><tr><th>Opportunity</th><th>Customer</th><th>Closed</th><th class="text-end">Value</th></tr></thead>
+    <tbody>{% for o in s.won_rows %}<tr><td><a href="{{ o.get_absolute_url }}">{{ o.code }} {{ o.title|truncatechars:40 }}</a></td><td>{{ o.customer.company_name }}</td><td>{{ o.closed_at|date:"d M Y" }}</td><td class="text-end">{{ o.estimated_value|money }}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">No deals won in this period.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Pipeline <span class="badge-status badge-inactive">now</span> and lost reasons</div><div class="card-body small">
+    <div>{{ s.pipeline_count }} open opportunit{{ s.pipeline_count|pluralize:"y,ies" }} · {{ s.pipeline_value|money }}</div>
+    <div class="text-secondary">Weighted by probability: {{ s.pipeline_weighted|money }}</div>
+    <hr><div class="fw-semibold mb-1">Lost in the period: {{ s.lost }}</div>
+    {% for r in s.lost_reasons %}<div class="d-flex justify-content-between"><span>{{ r.lost_reason__value|default:"No reason recorded" }}</span><b>{{ r.n }}</b></div>{% empty %}<div class="text-secondary">None.</div>{% endfor %}
+  </div></div></div>
+</div>
+{% endwith %}
+
+<div class="tf-section-title"><i class="bi bi-check2-square"></i>Follow-ups and tasks</div>
+<div class="row g-3">
+  {% include "performance/_kpi.html" with color="green" icon="check2-all" label="Follow-ups done" value=d.followups.fu_completed %}
+  {% include "performance/_kpi.html" with color="red" icon="alarm" label="Follow-ups overdue" value=d.followups.fu_overdue_now now=True %}
+  {% include "performance/_kpi.html" with color="orange" icon="calendar-week" label="Follow-ups upcoming" value=d.followups.fu_upcoming_now now=True %}
+  {% include "performance/_kpi.html" with color="green" icon="check2-circle" label="Tasks completed" value=d.followups.tasks_completed %}
+  {% include "performance/_kpi.html" with color="blue" icon="list-task" label="Tasks pending" value=d.followups.tasks_pending_now now=True %}
+  {% include "performance/_kpi.html" with color="red" icon="exclamation-octagon" label="Tasks overdue" value=d.followups.tasks_overdue_now now=True %}
+</div>
+{% if d.followups.overdue_rows %}<div class="card mt-3"><div class="card-header">Overdue work</div><ul class="list-group list-group-flush small">{% for t in d.followups.overdue_rows %}<li class="list-group-item d-flex justify-content-between gap-2"><a href="{{ t.get_absolute_url }}">{{ t.title }}</a><span><span class="text-secondary">{{ t.customer.company_name|default:"" }}</span> <span class="badge-status badge-danger">due {{ t.due_date|date:"d M" }}</span></span></li>{% endfor %}</ul></div>{% endif %}
+
+<div class="tf-section-title"><i class="bi bi-journal-check"></i>Daily reports <span class="small fw-normal text-secondary">(self-reported by the employee)</span></div>
+<div class="card"><ul class="list-group list-group-flush small">{% for r in recent_reports %}<li class="list-group-item d-flex justify-content-between"><a href="{{ r.get_absolute_url }}">{{ r.report_date|date:"D d M Y" }}</a><span class="badge-status {% if r.status == 'reviewed' %}badge-active{% elif r.status == 'submitted' %}badge-info{% else %}badge-inactive{% endif %}">{{ r.get_status_display }}</span></li>{% empty %}<li class="list-group-item text-secondary">No daily reports yet.</li>{% endfor %}</ul></div>
+<p class="small text-secondary mt-3">How figures are counted: each lead and deal belongs to one employee (assigned Sales Engineer, else Coordinator, else its creator); "Leads created" counts leads this employee created. Period figures use each record's own date (Asia/Dubai time). Won value = estimated value of opportunities won in the period. Figures marked <span class="badge-status badge-inactive">now</span> show today's situation.</p>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/performance.js' %}"></script>
+{% endblock %}

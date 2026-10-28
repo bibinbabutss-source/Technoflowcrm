@@ -222,3 +222,26 @@ a.tf-stat-link:hover .card { border-color: #C9CF6B; }
 @media (max-width: 991.98px) { .tf-search { display: none; } }
 .badge-success { background: #E6F4EA; color: #1E6B34; }
 .badge-neutral { background: #EEF0F2; color: #5F6062; }
+
+/* ---- Employee performance (enhancement, Oct 2026): coloured cards, avatars, progress ------------------ */
+.tf-kpi { background: #fff; border: 1px solid var(--tf-line); border-left: 5px solid var(--tf-grey); border-radius: .6rem;
+  padding: .75rem .9rem; height: 100%; }
+.tf-kpi .label { font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; color: var(--tf-grey); display: flex; gap: .35rem; align-items: center; }
+.tf-kpi .value { font-size: 1.45rem; font-weight: 700; line-height: 1.25; color: var(--tf-ink); }
+.tf-kpi .sub { font-size: .78rem; color: var(--tf-grey); }
+.tf-kpi-green { border-left-color: #1E8E3E; } .tf-kpi-green .label i { color: #1E8E3E; }
+.tf-kpi-blue { border-left-color: #2F6FB3; } .tf-kpi-blue .label i { color: #2F6FB3; }
+.tf-kpi-orange { border-left-color: #C47F00; } .tf-kpi-orange .label i { color: #C47F00; }
+.tf-kpi-red { border-left-color: #B42318; } .tf-kpi-red .label i { color: #B42318; }
+.tf-kpi-brand { border-left-color: var(--tf-green); } .tf-kpi-brand .label i { color: var(--tf-olive); }
+.tf-avatar-lg { width: 56px; height: 56px; border-radius: 50%; background: var(--tf-green); color: var(--tf-ink);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex: none; }
+.tf-avatar-sm { width: 34px; height: 34px; border-radius: 50%; background: var(--tf-green-soft); color: var(--tf-olive-dark);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; flex: none; }
+.tf-progress { height: .55rem; background: #EEF0F2; border-radius: 99px; overflow: hidden; min-width: 70px; }
+.tf-progress > span { display: block; height: 100%; border-radius: 99px; }
+.tf-prog-green { background: #1E8E3E; } .tf-prog-orange { background: #C47F00; } .tf-prog-red { background: #B42318; }
+.tf-section-title { font-size: 1rem; font-weight: 700; margin: 1.25rem 0 .6rem; display: flex; align-items: center; gap: .45rem; }
+.tf-section-title i { color: var(--tf-olive); }
+.tf-chip-period .btn { --bs-btn-padding-y: .2rem; --bs-btn-padding-x: .6rem; --bs-btn-font-size: .8rem; }
+.tf-self-reported { background: #FFF8E6; border: 1px dashed #C47F00; border-radius: .5rem; padding: .5rem .75rem; font-size: .82rem; }
