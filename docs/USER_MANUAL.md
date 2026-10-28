@@ -110,6 +110,25 @@ Projects are usually created from a confirmed order (**Create project** on the o
 See section 4. Status filter "submitted" is the Director's approval queue; the dashboard lists it too.
 Quotations past their expiry date are marked *Expired* automatically; you are warned a few days before.
 
+**The printed quotation** follows Technoflow's standard format: (1) cover letter, (2) price schedule with
+Sl No. / Part No. / Item description / Qty / Unit price / Total price, the total and the amount in words,
+(3) commercial terms and conditions. Every section is edited on the quotation's edit page while it is a draft:
+- *Cover letter*: customer name and address as printed, K/Attn, subject, project, consultant, letter text,
+  closing, signatory name and designation. Empty name / address / attention / project use the customer and
+  opportunity details.
+- *Price schedule*: manufacturer line, note, sales engineer, sales in charge, approved by; line items with
+  part numbers (**Add line** / tick **Remove**). Totals, VAT and the amount in words are calculated automatically.
+- *Commercial terms and conditions*: a table of headings and texts, pre-filled from the company template;
+  **Add term**, edit or tick **Remove**. In texts, a blank line starts a new paragraph and `**text**` is bold.
+
+**Save draft**, **Save and keep editing** or **Save and preview**. On the quotation page, **Preview** shows the
+PDF, **PDF** downloads it and **Word** downloads an editable .docx. Both always contain the latest saved data.
+Drafts are marked "DRAFT — NOT APPROVED". The first issue prints as *Revision Number 0* (Rev 1 in the CRM),
+the next revision as 1, and so on.
+
+The company-wide wording (letterhead line, Arabic name, default letter, note, default terms and footer) is
+in **Settings → Quotation template** (System Administrator).
+
 ### Sales Orders
 Created only from accepted quotations. Draft → Confirmed → In progress → Partially completed → Completed (or Cancelled with a
 reason by a Director, only while no invoice is issued). Order value is counted **excluding VAT** in "Orders booked".

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load crm %}
+{% extends "base.html" %}{% load crm quotation_doc %}
 {% block title %}{{ q.number }} Rev {{ rev.version }}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'quotations:list' %}">Quotations</a></li><li class="breadcrumb-item active">{{ q.number }}</li></ol></nav>
@@ -15,7 +15,9 @@
       <a class="btn btn-outline-secondary" href="{% url 'quotations:decline' q.pk %}">Customer declined</a>{% endif %}
     {% if actions.convert %}<a class="btn btn-primary" href="{% url 'orders:create_from_quotation' q.pk %}"><i class="bi bi-cart-check me-1"></i>Create sales order</a>{% endif %}
     {% if actions.revise %}<a class="btn btn-outline-secondary" href="{% url 'quotations:revise' q.pk %}"><i class="bi bi-files me-1"></i>Revise</a>{% endif %}
-    <a class="btn btn-outline-secondary" href="{% url 'quotations:pdf' q.pk %}?rev={{ rev.version }}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+    <a class="btn btn-outline-secondary" href="{% url 'quotations:preview' q.pk %}?rev={{ rev.version }}"><i class="bi bi-eye me-1"></i>Preview</a>
+    <div class="btn-group"><a class="btn btn-outline-secondary" href="{% url 'quotations:pdf' q.pk %}?rev={{ rev.version }}&amp;download=1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+      <a class="btn btn-outline-secondary" href="{% url 'quotations:docx' q.pk %}?rev={{ rev.version }}"><i class="bi bi-file-earmark-word me-1"></i>Word</a></div>
     {% if actions.delete %}<form method="post" action="{% url 'quotations:delete' q.pk %}" data-confirm="Delete this draft quotation?">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button></form>{% endif %}
   </div>
 </div>
@@ -38,7 +40,7 @@
     <div class="card mb-3"><div class="card-header">Line items</div>
       <div class="table-responsive"><table class="table table-sm">
         <thead><tr><th>#</th><th>Description</th><th class="text-end">Qty</th><th>Unit</th><th class="text-end">Unit price</th><th class="text-end">Disc.</th><th class="text-end">Tax</th><th class="text-end">Net ({{ rev.currency }})</th></tr></thead>
-        <tbody>{% for ln in lines %}<tr><td>{{ forloop.counter }}</td><td>{{ ln.description|linebreaksbr }}</td><td class="text-end">{{ ln.quantity.normalize }}</td><td>{{ ln.unit }}</td><td class="text-end">{{ ln.unit_price|money }}</td><td class="text-end">{% if ln.discount_pct %}{{ ln.discount_pct.normalize }}%{% else %}—{% endif %}</td><td class="text-end">{{ ln.tax_rate_value.normalize }}%</td><td class="text-end">{{ ln.line_net|money }}</td></tr>
+        <tbody>{% for ln in lines %}<tr><td>{{ forloop.counter }}</td><td>{% if ln.part_no %}<span class="text-secondary small">{{ ln.part_no }}</span><br>{% endif %}{{ ln.description|linebreaksbr }}</td><td class="text-end">{{ ln.quantity.normalize }}</td><td>{{ ln.unit }}</td><td class="text-end">{{ ln.unit_price|money }}</td><td class="text-end">{% if ln.discount_pct %}{{ ln.discount_pct.normalize }}%{% else %}—{% endif %}</td><td class="text-end">{{ ln.tax_rate_value.normalize }}%</td><td class="text-end">{{ ln.line_net|money }}</td></tr>
         {% empty %}<tr><td colspan="8" class="tf-empty">No lines yet.</td></tr>{% endfor %}</tbody>
         <tfoot>
           <tr><td colspan="7" class="text-end">Subtotal</td><td class="text-end">{{ rev.subtotal|money }}</td></tr>
@@ -48,16 +50,20 @@
           <tr class="fw-semibold fs-6"><td colspan="7" class="text-end">Grand total ({{ rev.currency }})</td><td class="text-end">{{ rev.grand_total|money }}</td></tr>
         </tfoot>
       </table></div></div>
-    <div class="card mb-3"><div class="card-header">Terms</div><div class="card-body small"><div class="row">
-      {% if rev.scope_of_work %}<div class="col-md-6 mb-2"><div class="text-secondary">Scope of work</div>{{ rev.scope_of_work|linebreaksbr }}</div>{% endif %}
-      {% if rev.exclusions %}<div class="col-md-6 mb-2"><div class="text-secondary">Exclusions</div>{{ rev.exclusions|linebreaksbr }}</div>{% endif %}
-      <div class="col-md-6 mb-2"><div class="text-secondary">Payment terms</div>{{ rev.payment_terms|linebreaksbr|default:"—" }}</div>
-      <div class="col-md-6 mb-2"><div class="text-secondary">Delivery terms</div>{{ rev.delivery_terms|linebreaksbr|default:"—" }}</div>
-      <div class="col-md-6 mb-2"><div class="text-secondary">Warranty</div>{{ rev.warranty_terms|linebreaksbr|default:"—" }}</div>
-      <div class="col-md-6 mb-2"><div class="text-secondary">Validity</div>{{ rev.validity|default:"—" }}</div>
-      {% if rev.customer_notes %}<div class="col-12 mb-2"><div class="text-secondary">Notes to customer</div>{{ rev.customer_notes|linebreaksbr }}</div>{% endif %}
+    <div class="card mb-3"><div class="card-header">Printed document</div><div class="card-body small"><div class="row">
+      <div class="col-md-6 mb-2"><div class="text-secondary">Subject</div>{{ doc.subject|default:"—" }}</div>
+      <div class="col-md-6 mb-2"><div class="text-secondary">Project</div>{{ doc.project|default:"—" }}</div>
+      <div class="col-md-6 mb-2"><div class="text-secondary">Kind attention</div>{{ doc.attention|default:"—" }}</div>
+      <div class="col-md-6 mb-2"><div class="text-secondary">Consultant</div>{{ doc.consultant|default:"—" }}</div>
+      <div class="col-md-6 mb-2"><div class="text-secondary">Payment terms (copied to the sales order)</div>{{ rev.payment_terms|linebreaksbr|default:"—" }}</div>
+      <div class="col-md-6 mb-2"><div class="text-secondary">Signatory</div>{{ doc.signatory_name }} {{ doc.signatory_designation }}</div>
       {% if rev.internal_remarks %}<div class="col-12"><div class="text-secondary">Internal remarks (not printed)</div>{{ rev.internal_remarks|linebreaksbr }}</div>{% endif %}
-    </div></div></div>
+    </div></div>
+    {% if doc.terms %}<div class="table-responsive border-top"><table class="table table-sm mb-0 small">
+      <thead><tr><th style="width:28%">Commercial terms</th><th></th></tr></thead>
+      <tbody>{% for heading, content in doc.terms %}<tr><td class="fw-semibold">{{ heading }}</td><td>{{ content|rich }}</td></tr>{% endfor %}</tbody>
+    </table></div>{% endif %}
+    </div>
   </div>
   <div class="col-xl-4">
     <div class="card mb-3"><div class="card-header">Summary</div><div class="card-body"><dl class="row mb-0 small tf-dl">

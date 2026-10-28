@@ -1,47 +1,179 @@
-{% extends "pdf/base.html" %}{% load crm %}
-{% block title %}Quotation {{ q.number }} Rev {{ rev.version }}{% endblock %}
-{% block content %}
-{% if draft %}<div class="draft">DRAFT — NOT APPROVED — NOT VALID AS AN OFFER</div>{% endif %}
-<table><tr>
-  <td style="width:55%;vertical-align:top"><h1>QUOTATION</h1>
-    <div class="muted">No. <b style="color:#23262A">{{ q.number }}</b> · Revision {{ rev.version }}</div></td>
-  <td style="vertical-align:top"><table>
-    <tr><td class="muted">Date</td><td class="r">{{ rev.quotation_date|date:"d-M-Y" }}</td></tr>
-    <tr><td class="muted">Valid until</td><td class="r">{{ rev.expiry_date|date:"d-M-Y" }}</td></tr>
-    <tr><td class="muted">Salesperson</td><td class="r">{{ q.salesperson|person }}</td></tr>
-    <tr><td class="muted">Currency</td><td class="r">{{ rev.currency }}</td></tr>
-  </table></td></tr></table>
-<div class="box" style="margin-top:8pt">
-  <b>To: {{ q.customer.company_name }}</b><br>
-  {% if q.customer.contact_person %}Attn: {{ q.customer.contact_person }}{% if q.customer.designation %}, {{ q.customer.designation }}{% endif %}<br>{% endif %}
-  {% if q.customer.billing_address %}{{ q.customer.billing_address|linebreaksbr }}<br>{% endif %}
-  {{ q.customer.city }}{% if q.customer.country %}, {{ q.customer.country }}{% endif %}
-  {% if q.customer.trn %}<br>TRN {{ q.customer.trn }}{% endif %}
-  {% if q.opportunity %}<br><span class="muted">Project: {{ q.opportunity.title }}</span>{% endif %}
+{% load static quotation_doc %}<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Quotation {{ d.number }} Rev {{ d.revision_number }}</title>
+<style>
+  @font-face { font-family: TFArabic; src: url("{% static 'fonts/DejaVuSans.ttf' %}"); }
+
+  /* Page 1: cover letter (A4 = 595 x 842 pt). Frame borders draw the boxed area of the sample. */
+  @page {
+    size: a4 portrait;
+    @frame draftmark { -pdf-frame-content: draftmark; left: 29pt; top: 18pt; width: 300pt; height: 16pt; }
+    @frame letterhead { -pdf-frame-content: letterhead; left: 380pt; top: 10pt; width: 190pt; height: 92pt; }
+    @frame body { left: 29pt; top: 99pt; width: 538pt; height: 555pt; -pdf-frame-border: 1; padding: 6pt 8pt; }
+    @frame footer { -pdf-frame-content: footer; left: 29pt; top: 772pt; width: 538pt; height: 62pt; }
+  }
+  /* Price schedule pages: the heading block and column titles repeat on every page. */
+  @page schedule {
+    size: a4 portrait;
+    @frame draftmark { -pdf-frame-content: draftmark; left: 29pt; top: 18pt; width: 300pt; height: 16pt; }
+    @frame letterhead { -pdf-frame-content: letterhead; left: 380pt; top: 10pt; width: 190pt; height: 92pt; }
+    @frame schedhead { -pdf-frame-content: schedhead; left: 29pt; top: 99pt; width: 538pt; height: 122pt; -pdf-frame-border: 1; }
+    @frame body { left: 29pt; top: 221pt; width: 538pt; height: 434pt; -pdf-frame-border: 1; }
+    @frame schedfoot { -pdf-frame-content: schedfoot; left: 29pt; top: 668pt; width: 538pt; height: 104pt; }
+    @frame footer { -pdf-frame-content: footer; left: 29pt; top: 772pt; width: 538pt; height: 62pt; }
+  }
+  /* Commercial terms and conditions: page border, table inset. */
+  @page terms {
+    size: a4 portrait;
+    @frame pageborder { -pdf-frame-content: blank; left: 18pt; top: 22pt; width: 559pt; height: 798pt; -pdf-frame-border: 1; }
+    @frame letterhead { -pdf-frame-content: termshead; left: 430pt; top: 34pt; width: 135pt; height: 62pt; }
+    @frame body { left: 63pt; top: 100pt; width: 482pt; height: 640pt; }
+    @frame footer { -pdf-frame-content: termsfoot; left: 24pt; top: 772pt; width: 545pt; height: 46pt; }
+  }
+
+  body { font-family: Helvetica; font-size: 9.5pt; color: #000; }
+  p { margin: 0 0 7pt 0; }
+  table { width: 100%; }
+  td, th { vertical-align: top; }
+  .center { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }
+  .lh-logo { text-align: center; }
+  .lh-line { text-align: center; font-size: 6.2pt; line-height: 7.4pt; }
+  .lh-ar { font-family: TFArabic; font-size: 6.4pt; text-align: center; }
+  .draft { color: #B42318; font-size: 7pt; font-weight: bold; text-align: center; }
+  .foot { font-size: 7.6pt; }
+  .foot-c { font-size: 6.8pt; text-align: center; line-height: 8pt; }
+
+  /* cover */
+  .cover td { padding: 0 0 9pt 0; font-size: 9.5pt; }
+  .cover .lbl { width: 140pt; }
+  .letter p { font-size: 9.5pt; margin-bottom: 9pt; }
+  .closing { font-size: 11pt; line-height: 14pt; }
+  .sign td { font-size: 11pt; }
+
+  /* schedule */
+  .title { font-size: 14pt; font-weight: bold; text-align: center; text-decoration: underline; padding-top: 4pt; }
+  .info td { font-size: 8.3pt; padding: 1pt 2pt 4pt 2pt; }
+  .info .k { font-weight: bold; width: 70pt; }
+  .mfr { font-size: 8.3pt; font-weight: bold; padding: 4pt 2pt 3pt 2pt; border-top: 0.75pt solid #000; border-bottom: 0.75pt solid #000; }
+  .cols th { font-size: 8.3pt; font-weight: bold; padding: 5pt 2pt 2pt 2pt; text-align: left; }
+  .items td { font-size: 8.3pt; padding: 3pt 2pt 5pt 2pt; }
+  .totals td { font-size: 9pt; padding: 3pt 2pt; }
+  .grand td { font-size: 10.5pt; font-weight: bold; border-top: 1.5pt solid #000; padding-top: 4pt; }
+  .words td { font-size: 8pt; padding: 3pt 2pt; }
+  .note { font-size: 9pt; font-weight: bold; text-align: center; border-top: 1.5pt solid #000; padding-top: 9pt; }
+  .sig td { font-size: 9pt; text-align: center; }
+  .sig .role { font-size: 10pt; font-weight: bold; }
+
+  /* terms */
+  .t-title { font-size: 13pt; font-weight: bold; text-align: center; text-decoration: underline; margin-bottom: 12pt; }
+  .terms td { border: 0.75pt solid #000; font-size: 10pt; padding: 8pt 4pt 2pt 4pt; }
+  .terms .h { width: 117pt; font-weight: bold; text-align: center; vertical-align: middle; }
+  .t-foot { font-size: 7pt; color: #333; line-height: 8.5pt; }
+</style></head>
+<body>
+{# ------------------------------------------------------------ repeating blocks #}
+<div id="draftmark">{% if d.is_draft %}<div class="draft" style="text-align:left">DRAFT &#8212; NOT APPROVED &#8212; NOT VALID AS AN OFFER</div>{% else %}&nbsp;{% endif %}</div>
+<div id="letterhead">
+  <div class="lh-logo"><img src="{% static 'img/technoflow-logo-full.png' %}" style="width:110pt;height:45pt"></div>
+  {% if d.tagline %}<div class="lh-line b">{{ d.tagline }}</div>{% endif %}
+  {% if d.arabic_name %}<div class="lh-ar">{{ d.arabic_name }}</div>{% endif %}
+  <div class="lh-line">{{ d.legal_name }}</div>
+  {% if d.trn %}<div class="lh-line">TRN:{{ d.trn }}</div>{% endif %}
 </div>
-<table class="lines">
-  <thead><tr><th style="width:5%">#</th><th style="width:43%">Description</th><th class="r" style="width:8%">Qty</th><th style="width:7%">Unit</th><th class="r" style="width:12%">Unit price</th><th class="r" style="width:7%">Disc.</th><th class="r" style="width:6%">Tax</th><th class="r" style="width:12%">Amount</th></tr></thead>
-  <tbody>{% for ln in lines %}<tr><td>{{ forloop.counter }}</td><td>{{ ln.description|linebreaksbr }}</td><td class="r">{{ ln.quantity.normalize }}</td><td>{{ ln.unit }}</td><td class="r">{{ ln.unit_price|money }}</td><td class="r">{% if ln.discount_pct %}{{ ln.discount_pct.normalize }}%{% endif %}</td><td class="r">{{ ln.tax_rate_value.normalize }}%</td><td class="r">{{ ln.line_net|money }}</td></tr>{% endfor %}</tbody>
+
+<div id="footer">
+  {% if d.footer_tagline %}<div class="foot">{{ d.footer_tagline }}</div>{% endif %}
+  {% if d.footer_website %}<div class="foot b" style="padding-top:5pt">{{ d.footer_website }}</div>{% endif %}
+  <div class="foot-c" style="padding-top:5pt">{{ d.footer_business_lines }}<br>{{ d.footer_contact }}</div>
+</div>
+
+<div id="schedhead">
+  <div class="title">PRICE SCHEDULE</div>
+  <table class="info">
+    <tr><td class="k">Customer</td><td style="width:260pt">: {{ d.customer_name }}</td><td class="k">Date</td><td>: {{ d.date|date:"d/m/Y" }}</td></tr>
+    <tr><td class="k">Project</td><td>: {{ d.project }}</td><td class="k">Currency</td><td>: {{ d.currency_name }}</td></tr>
+    <tr><td class="k">Consultant</td><td>: {{ d.consultant }}</td><td class="k">Quote No.</td><td>: {{ d.number }}</td></tr>
+  </table>
+  <div class="mfr">{% if d.manufacturer %}MANUFACTURER : {{ d.manufacturer }}{% else %}&nbsp;{% endif %}</div>
+  <table class="cols"><tr>
+    <th style="width:30pt">Sl NO.</th><th style="width:{% if d.show_discount %}84{% else %}93{% endif %}pt">PART NO.</th>
+    <th style="width:{% if d.show_discount %}186{% else %}223{% endif %}pt">ITEM DESCRIPTION</th>
+    <th style="width:{% if d.show_discount %}46{% else %}40{% endif %}pt" class="center">QTY</th>
+    <th style="width:{% if d.show_discount %}70{% else %}79{% endif %}pt" class="r">UNIT PRICE</th>
+    {% if d.show_discount %}<th style="width:36pt" class="r">DISC.</th>{% endif %}
+    <th style="width:{% if d.show_discount %}86{% else %}74{% endif %}pt" class="r">TOTAL PRICE</th></tr></table>
+</div>
+
+<div id="schedfoot">
+  <div class="note">{{ d.schedule_note }}</div>
+  <table class="sig" style="margin-top:22pt">
+    <tr><td>{{ d.sales_engineer }}</td><td>{{ d.sales_in_charge }}</td><td>{{ d.approved_by }}</td></tr>
+    <tr><td class="role" style="padding-top:5pt">Sales Engineer</td><td class="role" style="padding-top:5pt">Sales In Charge</td><td class="role" style="padding-top:5pt">Approved By</td></tr>
+  </table>
+</div>
+
+<div id="termshead">
+  <div class="lh-logo"><img src="{% static 'img/technoflow-logo-full.png' %}" style="width:100pt;height:41pt"></div>
+  {% if d.footer_tagline %}<div class="lh-line" style="color:#666">{{ d.footer_tagline|lower }}</div>{% endif %}
+</div>
+<div id="termsfoot" class="t-foot">
+  {{ d.footer_tagline|lower }}<br>{{ d.footer_website|lower }}<br>{{ d.footer_business_lines }}<br>{{ d.footer_contact }}
+</div>
+<div id="blank">&nbsp;</div>
+
+{# ------------------------------------------------------------ 1. cover letter #}
+<table class="cover">
+  <tr><td colspan="2">{{ d.date|date:"d/m/Y" }}</td></tr>
+  <tr><td colspan="2" class="b" style="font-size:10pt">{{ d.customer_name }}</td></tr>
+  {% if d.customer_address %}<tr><td colspan="2">{{ d.customer_address|linebreaksbr }}</td></tr>{% endif %}
+  {% if d.attention %}<tr><td class="lbl">K/Attn:</td><td>{{ d.attention }}</td></tr>{% endif %}
+  <tr><td class="lbl b">Subject :</td><td class="b">{{ d.subject }}</td></tr>
+  <tr><td class="lbl">Quote. Ref :</td><td>{{ d.number }}</td></tr>
+  {% if d.project %}<tr><td class="lbl">Project:</td><td>{{ d.project }}</td></tr>{% endif %}
+  <tr><td class="lbl">Revision Number</td><td>{{ d.revision_number }}</td></tr>
 </table>
-<table class="totals" style="margin-top:6pt"><tr><td style="width:55%"></td><td><table>
-  <tr><td>Subtotal</td><td class="r">{{ rev.subtotal|money }}</td></tr>
-  {% if rev.header_discount %}<tr><td>Discount</td><td class="r">−{{ rev.header_discount|money }}</td></tr>{% endif %}
-  <tr><td>Taxable amount</td><td class="r">{{ rev.taxable_amount|money }}</td></tr>
-  {% for rate, t in tax_breakdown.items %}<tr><td>VAT {{ rate.normalize }}%</td><td class="r">{{ t.tax|money }}</td></tr>{% endfor %}
-  <tr class="grand"><td>Total {{ rev.currency }}</td><td class="r">{{ rev.grand_total|money }}</td></tr>
-</table></td></tr></table>
-{% if rev.scope_of_work %}<h2>Scope of work</h2><div>{{ rev.scope_of_work|linebreaksbr }}</div>{% endif %}
-{% if rev.exclusions %}<h2>Exclusions</h2><div>{{ rev.exclusions|linebreaksbr }}</div>{% endif %}
-<h2>Commercial terms</h2>
-<table>
-  <tr><td class="muted" style="width:22%">Payment</td><td>{{ rev.payment_terms|linebreaksbr|default:"—" }}</td></tr>
-  <tr><td class="muted">Delivery</td><td>{{ rev.delivery_terms|linebreaksbr|default:"—" }}</td></tr>
-  <tr><td class="muted">Warranty</td><td>{{ rev.warranty_terms|linebreaksbr|default:"—" }}</td></tr>
-  <tr><td class="muted">Validity</td><td>{{ rev.validity|default:"—" }}</td></tr>
+<div class="letter">{{ d.letter_body|rich }}</div>
+<div class="closing" style="margin-top:14pt">{{ d.letter_closing|linebreaksbr }}</div>
+<table class="sign" style="margin-top:52pt">
+  <tr><td style="width:60%">{% if d.signatory_name %}{{ d.signatory_name }}<br>{% endif %}<span style="font-size:9pt">. . . . . . . . . . . . . . . . . . . . . . . . . . .</span><br>{{ d.signatory_designation }}</td>
+      <td class="r" style="vertical-align:bottom">{{ d.signature_label }}</td></tr>
 </table>
-{% if rev.customer_notes %}<h2>Notes</h2><div>{{ rev.customer_notes|linebreaksbr }}</div>{% endif %}
-<table style="margin-top:28pt"><tr>
-  <td style="width:50%">For {{ company.company_name }}<br><br><br>______________________________<br>{{ q.salesperson|person }}</td>
-  <td>Accepted by customer<br><br><br>______________________________<br>Name, signature, stamp and date</td></tr></table>
-{% endblock %}
-{% block footer %}Quotation {{ q.number }} Rev {{ rev.version }}{% endblock %}
+
+{# ------------------------------------------------------------ 2. price schedule #}
+<pdf:nexttemplate name="schedule"/>
+<pdf:nextpage/>
+<table class="items">
+  {% for ln in d.lines %}
+  <tr>
+    <td style="width:30pt" class="center">{{ forloop.counter }}</td>
+    <td style="width:{% if d.show_discount %}84{% else %}93{% endif %}pt">{{ ln.part_no }}</td>
+    <td style="width:{% if d.show_discount %}186{% else %}223{% endif %}pt">{{ ln.description|linebreaksbr }}</td>
+    <td style="width:{% if d.show_discount %}46{% else %}40{% endif %}pt" class="center">{{ ln.quantity|qty }}{% if d.show_unit and ln.unit %} {{ ln.unit }}{% endif %}</td>
+    <td style="width:{% if d.show_discount %}70{% else %}79{% endif %}pt" class="r">{{ ln.unit_price|amount }}</td>
+    {% if d.show_discount %}<td style="width:36pt" class="r">{% if ln.discount_pct %}{{ ln.discount_pct|qty }}%{% endif %}</td>{% endif %}
+    <td style="width:{% if d.show_discount %}86{% else %}74{% endif %}pt" class="r">{{ ln.line_net|amount }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% if not d.simple_total %}
+<table class="totals" style="margin-top:6pt">
+  <tr><td style="width:410pt" class="r b">SUB TOTAL</td><td class="r" style="padding-right:4pt">{{ d.subtotal|amount }}</td></tr>
+  {% if d.header_discount %}<tr><td class="r b">DISCOUNT</td><td class="r" style="padding-right:4pt">-{{ d.header_discount|amount }}</td></tr>
+  <tr><td class="r b">TOTAL AFTER DISCOUNT</td><td class="r" style="padding-right:4pt">{{ d.taxable|amount }}</td></tr>{% endif %}
+  {% for rate, tax in d.tax_rows %}<tr><td class="r b">VAT {{ rate|qty }}%</td><td class="r" style="padding-right:4pt">{{ tax|amount }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+<table class="grand"><tr><td style="width:300pt"></td><td style="width:110pt">TOTAL AMOUNT</td><td class="r" style="padding-right:4pt">{{ d.grand_total|amount }}</td></tr></table>
+<table class="words"><tr><td style="width:125pt" class="r b">Total Price: {{ d.currency_name }}</td><td>{{ d.amount_words }}</td></tr></table>
+
+{# ------------------------------------------------------------ 3. commercial terms #}
+{% if d.terms %}
+<pdf:nexttemplate name="terms"/>
+<pdf:nextpage/>
+<div class="t-title">COMMERCIAL TERMS AND CONDITIONS</div>
+<table class="terms" style="border-collapse:collapse">
+  {% for heading, content in d.terms %}
+  <tr><td class="h">{{ heading }}</td><td>{{ content|rich }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+</body></html>

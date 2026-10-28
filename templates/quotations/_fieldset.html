@@ -1,0 +1,3 @@
+{% if section %}<div class="{{ width }}"><div class="card h-100"><div class="card-header">{{ section.0 }}</div><div class="card-body"><div class="row">
+  {% for field in section.1 %}<div class="{% if field.name == 'letter_body' %}col-12{% elif field.field.widget.attrs.rows %}col-md-6{% else %}col-md-4{% endif %}">{% include "partials/field.html" %}</div>{% endfor %}
+</div></div></div></div>{% endif %}

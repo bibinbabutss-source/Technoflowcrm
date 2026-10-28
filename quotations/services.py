@@ -19,7 +19,7 @@ from core.audit import log_action
 from core.models import CompanyProfile
 from core.money import LineInput, calculate
 
-from .models import Approval, Quotation, QuotationLine, QuotationRevision
+from .models import Approval, Quotation, QuotationLine, QuotationRevision, QuotationTemplate, QuotationTerm
 
 S = QuotationRevision.Status
 
@@ -231,7 +231,7 @@ def record_decline(rev, user, *, date, reason):
 REVISABLE = (S.REJECTED, S.APPROVED, S.SENT, S.DECLINED, S.EXPIRED, S.ACCEPTED)
 
 COPY_FIELDS = ("currency", "payment_terms", "delivery_terms", "scope_of_work", "exclusions", "warranty_terms",
-               "validity", "customer_notes", "internal_remarks", "header_discount")
+               "validity", "customer_notes", "internal_remarks", "header_discount") + QuotationRevision.DOCUMENT_FIELDS
 
 
 @transaction.atomic
@@ -249,9 +249,15 @@ def revise(quotation, user, reason=""):
                             revision_reason=reason, **{f: getattr(old, f) for f in COPY_FIELDS})
     new.save()
     for ln in old.lines.all():
-        QuotationLine.objects.create(revision=new, position=ln.position, description=ln.description,
+        QuotationLine.objects.create(revision=new, position=ln.position, part_no=ln.part_no,
+                                     description=ln.description,
                                      quantity=ln.quantity, unit=ln.unit, unit_price=ln.unit_price,
                                      discount_pct=ln.discount_pct, tax_rate=ln.tax_rate)
+    from .document import legacy_terms
+
+    terms = [(t.heading, t.content) for t in old.terms.all()] or legacy_terms(old)
+    for pos, (heading, content) in enumerate(terms, start=1):
+        QuotationTerm.objects.create(revision=new, position=pos, heading=heading, content=content)
     old.status = S.SUPERSEDED
     old.save(update_fields=["status", "updated_at", "updated_by"])
     quotation.current_version = new.version
@@ -279,7 +285,7 @@ def expire_overdue():
 
 
 @transaction.atomic
-def create_quotation(*, customer, opportunity, salesperson, currency, user):
+def create_quotation(*, customer, opportunity, salesperson, currency, user, with_template=True):
     company = CompanyProfile.get()
     q = Quotation.objects.create(customer=customer, opportunity=opportunity, salesperson=salesperson,
                                  currency=currency or company.default_currency)
@@ -288,6 +294,22 @@ def create_quotation(*, customer, opportunity, salesperson, currency, user):
         expiry_date=timezone.localdate() + timezone.timedelta(days=company.quotation_validity_days),
         validity=f"This quotation is valid for {company.quotation_validity_days} days from its date.",
         payment_terms=f"{company.default_payment_terms_days} days from invoice date.")
+    if with_template:
+        apply_template_defaults(rev)
     q.sync_from_current()
     record(q, "created", f"Quotation {q.number} created")
     return q, rev
+
+
+def apply_template_defaults(rev):
+    """New revision: cover-letter wording and commercial terms from Settings > Quotation template."""
+    tpl = QuotationTemplate.get()
+    for field in ("letter_body", "letter_closing", "signatory_designation", "schedule_note"):
+        if not getattr(rev, field):
+            setattr(rev, field, getattr(tpl, field))
+    rev.save()
+    if not rev.terms.exists():
+        for pos, row in enumerate(tpl.default_terms or [], start=1):
+            if len(row) == 2 and str(row[0]).strip():
+                QuotationTerm.objects.create(revision=rev, position=pos, heading=str(row[0])[:100],
+                                             content=str(row[1]))

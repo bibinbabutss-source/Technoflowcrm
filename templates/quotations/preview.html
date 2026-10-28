@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Preview {{ q.number }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'quotations:list' %}">Quotations</a></li><li class="breadcrumb-item"><a href="{{ q.get_absolute_url }}?rev={{ rev.version }}">{{ q.number }}</a></li><li class="breadcrumb-item active">Preview</li></ol></nav>
+<div class="tf-page-head"><div><h1>Preview {{ q.number }} <small class="text-secondary">Revision {{ d.revision_number }}</small></h1>
+  <p>This is exactly what will be downloaded, generated from the latest saved data.{% if d.is_draft %} Drafts are marked "DRAFT — NOT APPROVED".{% endif %}</p></div>
+  <div class="tf-actions">
+    {% if rev.is_editable and rev.is_current and "quotations.edit" in crm_caps %}<a class="btn btn-outline-primary" href="{% url 'quotations:edit' q.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>{% endif %}
+    <a class="btn btn-primary" href="{% url 'quotations:pdf' q.pk %}?rev={{ rev.version }}&amp;download=1"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
+    <a class="btn btn-outline-secondary" href="{% url 'quotations:docx' q.pk %}?rev={{ rev.version }}"><i class="bi bi-file-earmark-word me-1"></i>Download Word</a>
+    <a class="btn btn-outline-secondary" href="{{ q.get_absolute_url }}?rev={{ rev.version }}">Back</a>
+  </div></div>
+<div class="card"><iframe title="Quotation PDF preview" src="{% url 'quotations:pdf' q.pk %}?rev={{ rev.version }}" style="width:100%;height:80vh;border:0"></iframe>
+  <div class="card-body small text-secondary border-top">If the preview does not show on your device, use Download PDF.</div></div>
+{% endblock %}

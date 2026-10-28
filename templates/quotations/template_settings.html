@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Quotation template{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0"><div class="card-body">
+<form method="post" novalidate>{% csrf_token %}
+  {% include "partials/form_errors.html" %}
+  <p class="text-secondary small">Letterhead and footer apply to every quotation PDF and Word file. The cover-letter text, note and terms below are the defaults copied into <b>new</b> quotations; each quotation can then be edited on its own. The legal name and TRN printed under the logo come from the Company tab.</p>
+  {% for title, fields in form.get_fieldsets %}
+    <h2 class="mt-3 mb-2">{{ title }}</h2><div class="row">
+    {% for field in fields %}<div class="{% if field.field.widget.attrs.rows %}col-12{% else %}col-md-6{% endif %}">{% include "partials/field.html" %}</div>{% endfor %}</div>
+  {% endfor %}
+  <h2 class="mt-3 mb-2">Default commercial terms</h2>
+  <div data-formset="{{ terms.prefix }}">
+    {{ terms.management_form }}
+    <div class="table-responsive"><table class="table table-sm align-top">
+      <thead><tr><th style="width:260px">Heading</th><th>Text <span class="fw-normal text-secondary small">(blank line = new paragraph, **text** = bold)</span></th><th style="width:90px"></th></tr></thead>
+      <tbody data-formset-body>{% for f in terms %}{% include "quotations/_term_row.html" %}{% endfor %}</tbody>
+    </table></div>
+    <template>{% with f=terms.empty_form %}{% include "quotations/_term_row.html" %}{% endwith %}</template>
+    <button class="btn btn-sm btn-outline-primary mb-3" type="button" data-formset-add><i class="bi bi-plus-lg me-1"></i>Add term</button>
+  </div>
+  <button class="btn btn-primary" type="submit">Save quotation template</button>
+</form></div></div>
+{% endblock %}

@@ -5,6 +5,7 @@ from django.db.models import Q, Sum
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import capability_required, has_capability, scope_queryset
@@ -16,9 +17,10 @@ from core.pdf import pdf_response
 from customers.models import Customer
 from sales.models import Opportunity
 
-from . import services
-from .forms import AcceptanceForm, DecisionForm, DeclineForm, LineFormSet, QuotationForm, ReviseForm, RevisionForm
-from .models import OWNER_FIELDS, Quotation, QuotationRevision
+from . import document, services
+from .forms import (AcceptanceForm, DecisionForm, DeclineForm, DefaultTermFormSet, LineFormSet, QuotationForm,
+                    QuotationTemplateForm, ReviseForm, RevisionForm, term_formset)
+from .models import OWNER_FIELDS, Quotation, QuotationRevision, QuotationTemplate
 
 S = QuotationRevision.Status
 TONE = {"draft": "neutral", "submitted": "warn", "approved": "info", "rejected": "bad", "sent": "info",
@@ -79,13 +81,46 @@ class QuotationList(CrmListView):
                 ("Quotations", qs.count())]
 
 
-def _render_editor(request, qform, rform, formset, title, quotation=None):
+def _render_editor(request, qform, rform, formset, title, quotation=None, terms=None):
     from core.models import TaxRate
 
     return render(request, "quotations/edit.html", {
-        "qform": qform, "rform": rform, "formset": formset, "title": title, "quotation": quotation,
+        "qform": qform, "rform": rform, "formset": formset, "terms": terms, "title": title, "quotation": quotation,
         "no_tax_rates": not TaxRate.objects.filter(is_active=True).exists(),
     })
+
+
+TEMPLATE_TEXT_FIELDS = ("letter_body", "letter_closing", "signatory_designation", "schedule_note")
+
+
+def _template_initial(rev=None):
+    tpl = QuotationTemplate.get()
+    return {f: getattr(tpl, f) for f in TEMPLATE_TEXT_FIELDS if rev is None or not getattr(rev, f)}
+
+
+def _initial_terms(rev=None):
+    if rev is not None:
+        rows = document.legacy_terms(rev)
+        if rows:
+            return rows
+    return [tuple(r) for r in (QuotationTemplate.get().default_terms or []) if len(r) == 2]
+
+
+def _save_terms(terms, rev):
+    terms.instance = rev
+    position = 0
+    for form in terms.forms:
+        if not form.cleaned_data or form.cleaned_data.get("DELETE"):
+            if form.instance.pk and form.cleaned_data.get("DELETE"):
+                form.instance.delete()
+            continue
+        if not (form.cleaned_data.get("heading") or "").strip():
+            continue
+        obj = form.save(commit=False)
+        position += 1
+        obj.revision = rev
+        obj.position = position
+        obj.save()
 
 
 @capability_required("quotations.edit")
@@ -105,26 +140,37 @@ def quotation_create(request):
         "quotation_date": timezone.localdate(),
         "expiry_date": timezone.localdate() + timezone.timedelta(days=_company().quotation_validity_days),
         "validity": f"This quotation is valid for {_company().quotation_validity_days} days from its date.",
-        "payment_terms": f"{_company().default_payment_terms_days} days from invoice date."})
+        "payment_terms": f"{_company().default_payment_terms_days} days from invoice date.",
+        **_template_initial()})
     formset = LineFormSet(request.POST or None, instance=draft, prefix="lines")
-    if request.method == "POST" and qform.is_valid() and rform.is_valid() and formset.is_valid():
+    terms = term_formset(request.POST or None, draft, _initial_terms())
+    if request.method == "POST" and all([qform.is_valid(), rform.is_valid(), formset.is_valid(), terms.is_valid()]):
         try:
             with transaction.atomic():
                 d = qform.cleaned_data
                 q, rev = services.create_quotation(customer=d["customer"], opportunity=d["opportunity"],
                                                    salesperson=d["salesperson"], currency=d["currency"],
-                                                   user=request.user)
+                                                   user=request.user, with_template=False)
                 for field in rform.Meta.fields:
                     setattr(rev, field, rform.cleaned_data[field])
                 rev.save()
                 _save_lines(formset, rev)
+                _save_terms(terms, rev)
                 services.recalculate(rev)
         except (ValidationError, ValueError) as exc:
             rform.add_error(None, getattr(exc, "messages", [str(exc)]))
         else:
             messages.success(request, f"Quotation {q.number} saved as draft.")
-            return redirect(q.get_absolute_url())
-    return _render_editor(request, qform, rform, formset, "New quotation")
+            return redirect(_after_save(request, q))
+    return _render_editor(request, qform, rform, formset, "New quotation", terms=terms)
+
+
+def _after_save(request, q):
+    if request.POST.get("then") == "preview":
+        return reverse("quotations:preview", args=[q.pk])
+    if request.POST.get("then") == "continue":
+        return reverse("quotations:edit", args=[q.pk])
+    return q.get_absolute_url()
 
 
 def _company():
@@ -160,9 +206,11 @@ def quotation_edit(request, pk):
     if rev.version > 1:
         for name in ("customer", "currency"):
             qform.fields[name].disabled = True
-    rform = RevisionForm(request.POST or None, instance=rev, user=request.user, prefix="r")
+    rform = RevisionForm(request.POST or None, instance=rev, user=request.user, prefix="r",
+                         initial=_template_initial(rev))
     formset = LineFormSet(request.POST or None, instance=rev, prefix="lines")
-    if request.method == "POST" and qform.is_valid() and rform.is_valid() and formset.is_valid():
+    terms = term_formset(request.POST or None, rev, _initial_terms(rev))
+    if request.method == "POST" and all([qform.is_valid(), rform.is_valid(), formset.is_valid(), terms.is_valid()]):
         try:
             with transaction.atomic():
                 q = qform.save()
@@ -170,14 +218,15 @@ def quotation_edit(request, pk):
                 rev.currency = q.currency
                 rev.save()
                 _save_lines(formset, rev)
+                _save_terms(terms, rev)
                 services.recalculate(rev)
         except (ValidationError, ValueError) as exc:
             rform.add_error(None, getattr(exc, "messages", [str(exc)]))
         else:
             activity.record(q, "updated", f"Draft Rev {rev.version} edited — total {q.currency} {rev.grand_total:,.2f}")
             messages.success(request, f"{q.display_number} saved.")
-            return redirect(q.get_absolute_url())
-    return _render_editor(request, qform, rform, formset, f"Edit {q.display_number}", q)
+            return redirect(_after_save(request, q))
+    return _render_editor(request, qform, rform, formset, f"Edit {q.display_number}", q, terms=terms)
 
 
 @capability_required("quotations.view")
@@ -209,7 +258,7 @@ def quotation_detail(request, pk):
         "q": q, "rev": rev, "lines": rev.lines.select_related("tax_rate"), "is_current": is_current,
         "revisions": q.revisions.all(), "approvals": rev.approvals.select_related("decided_by"),
         "tax_breakdown": services.tax_breakdown(rev) if rev.lines.exists() else {},
-        "orders": rev.orders.all(), "actions": actions,
+        "orders": rev.orders.all(), "actions": actions, "doc": document.build(q, rev),
         "decision_form": DecisionForm(), "activities": activity.for_object(q, u)[:30],
     })
 
@@ -314,16 +363,41 @@ def quotation_revise(request, pk):
                                               "cancel_url": q.get_absolute_url(), "submit_label": "Create revision"})
 
 
-@capability_required("quotations.view")
-def quotation_pdf(request, pk):
+def _revision_for_print(request, pk):
     q = get_scoped_or_404(Quotation, request.user, pk, OWNER_FIELDS)
     rev = q.revisions.filter(version=get_int(request.GET, "rev", q.current_version)).first() or q.current
-    activity.record(q, "status", f"PDF of Rev {rev.version} generated")
-    return pdf_response("quotations/pdf.html", {
-        "q": q, "rev": rev, "lines": rev.lines.select_related("tax_rate"),
-        "tax_breakdown": services.tax_breakdown(rev) if rev.lines.exists() else {},
-        "draft": rev.status in (S.DRAFT, S.SUBMITTED, S.REJECTED),
-    }, f"{q.number}-Rev{rev.version}", download=request.GET.get("download") == "1")
+    return q, rev
+
+
+@xframe_options_sameorigin  # shown inside the preview page
+@capability_required("quotations.view")
+def quotation_pdf(request, pk):
+    q, rev = _revision_for_print(request, pk)
+    download = request.GET.get("download") == "1"
+    if download:
+        activity.record(q, "status", f"PDF of Rev {rev.version} downloaded")
+    return pdf_response("quotations/pdf.html", {"q": q, "rev": rev, "d": document.build(q, rev)},
+                        document.filename(q, rev), download=download)
+
+
+@capability_required("quotations.view")
+def quotation_docx(request, pk):
+    from django.http import HttpResponse
+
+    from .docx_export import build_docx
+
+    q, rev = _revision_for_print(request, pk)
+    activity.record(q, "status", f"Word file of Rev {rev.version} downloaded")
+    response = HttpResponse(build_docx(q, rev), content_type=(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+    response["Content-Disposition"] = f'attachment; filename="{document.filename(q, rev)}.docx"'
+    return response
+
+
+@capability_required("quotations.view")
+def quotation_preview(request, pk):
+    q, rev = _revision_for_print(request, pk)
+    return render(request, "quotations/preview.html", {"q": q, "rev": rev, "d": document.build(q, rev)})
 
 
 @require_POST
@@ -353,3 +427,24 @@ def scoped_customers(user):
     from customers.models import OWNER_FIELDS as CO
 
     return scope_queryset(Customer.objects.filter(is_archived=False), user, CO)
+
+
+@capability_required("settings.manage")
+def template_settings(request):
+    from core.audit import log_action
+
+    tpl = QuotationTemplate.get()
+    form = QuotationTemplateForm(request.POST or None, instance=tpl, user=request.user)
+    rows = [{"heading": h, "content": c} for h, c in (tpl.default_terms or []) if h]
+    terms = DefaultTermFormSet(request.POST or None, initial=rows, prefix="terms")
+    if request.method == "POST" and form.is_valid() and terms.is_valid():
+        tpl = form.save(commit=False)
+        tpl.default_terms = [[f.cleaned_data["heading"].strip(), f.cleaned_data["content"]] for f in terms.forms
+                             if f.cleaned_data and not f.cleaned_data.get("DELETE")
+                             and (f.cleaned_data.get("heading") or "").strip()]
+        tpl.save()
+        log_action("update", tpl, message="Quotation template changed")
+        messages.success(request, "Quotation template saved. New quotations use it; existing quotations keep "
+                                  "their own text (the letterhead and footer apply to every PDF).")
+        return redirect("quotations:template")
+    return render(request, "quotations/template_settings.html", {"form": form, "terms": terms, "tab": "quotation"})

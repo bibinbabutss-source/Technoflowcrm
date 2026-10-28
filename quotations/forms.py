@@ -10,7 +10,7 @@ from core.models import TaxRate
 from core.related import apply_related_fields
 from core.scopes import owners
 
-from .models import Quotation, QuotationLine, QuotationRevision
+from .models import Quotation, QuotationLine, QuotationRevision, QuotationTemplate, QuotationTerm
 
 User = get_user_model()
 
@@ -68,16 +68,34 @@ class QuotationForm(CrmFormMixin, forms.ModelForm):
 
 class RevisionForm(CrmFormMixin, forms.ModelForm):
     fieldsets = [
-        ("Dates", ["quotation_date", "expiry_date", "validity"]),
-        ("Terms", ["payment_terms", "delivery_terms", "warranty_terms"]),
-        ("Scope", ["scope_of_work", "exclusions"]),
-        ("Notes", ["customer_notes", "internal_remarks", "header_discount"]),
+        ("Quotation details", ["quotation_date", "expiry_date", "header_discount", "payment_terms"]),
+        ("Cover letter", ["customer_name", "attention", "customer_address", "subject", "project_name", "consultant",
+                          "letter_body", "letter_closing", "signatory_name", "signatory_designation"]),
+        ("Price schedule", ["manufacturer", "schedule_note", "sales_engineer_name", "sales_in_charge_name",
+                            "approved_by_name"]),
+        ("Scope and notes", ["scope_of_work", "exclusions", "customer_notes", "internal_remarks"]),
     ]
 
     class Meta:
         model = QuotationRevision
-        fields = ["quotation_date", "expiry_date", "validity", "payment_terms", "delivery_terms", "warranty_terms",
-                  "scope_of_work", "exclusions", "customer_notes", "internal_remarks", "header_discount"]
+        fields = ["quotation_date", "expiry_date", "header_discount", "payment_terms",
+                  "customer_name", "attention", "customer_address", "subject", "project_name", "consultant",
+                  "letter_body", "letter_closing", "signatory_name", "signatory_designation",
+                  "manufacturer", "schedule_note", "sales_engineer_name", "sales_in_charge_name", "approved_by_name",
+                  "scope_of_work", "exclusions", "customer_notes", "internal_remarks"]
+        widgets = {"customer_address": forms.Textarea(attrs={"rows": 3}),
+                   "letter_body": forms.Textarea(attrs={"rows": 9}),
+                   "letter_closing": forms.Textarea(attrs={"rows": 2}),
+                   "payment_terms": forms.Textarea(attrs={"rows": 2}),
+                   "scope_of_work": forms.Textarea(attrs={"rows": 3}),
+                   "exclusions": forms.Textarea(attrs={"rows": 3}),
+                   "customer_notes": forms.Textarea(attrs={"rows": 3}),
+                   "internal_remarks": forms.Textarea(attrs={"rows": 3})}
+        labels = {"payment_terms": "Payment terms (short — copied to the sales order)",
+                  "scope_of_work": "Scope of work (printed in the terms table)",
+                  "exclusions": "Exclusions (printed in the terms table)",
+                  "customer_notes": "Notes to customer (printed in the terms table)",
+                  "internal_remarks": "Internal remarks (never printed)"}
 
     def clean(self):
         data = super().clean()
@@ -89,8 +107,9 @@ class RevisionForm(CrmFormMixin, forms.ModelForm):
 class LineForm(forms.ModelForm):
     class Meta:
         model = QuotationLine
-        fields = ["description", "quantity", "unit", "unit_price", "discount_pct", "tax_rate"]
+        fields = ["part_no", "description", "quantity", "unit", "unit_price", "discount_pct", "tax_rate"]
         widgets = {
+            "part_no": forms.TextInput(attrs={"class": "form-control form-control-sm"}),
             "description": forms.Textarea(attrs={"rows": 2, "class": "form-control form-control-sm"}),
             "quantity": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.001",
                                                  "min": "0.001"}),
@@ -124,6 +143,58 @@ class BaseLineFormSet(forms.BaseInlineFormSet):
 
 LineFormSet = inlineformset_factory(QuotationRevision, QuotationLine, form=LineForm, formset=BaseLineFormSet,
                                     extra=0, can_delete=True, min_num=1, validate_min=False)
+
+
+class TermForm(forms.ModelForm):
+    def has_changed(self):
+        # Rows pre-filled from the template count as entered, even when the user did not touch them.
+        if self.is_bound and (self.data.get(self.add_prefix("heading"), "").strip()
+                              or self.data.get(self.add_prefix("content"), "").strip()):
+            return True
+        return super().has_changed()
+
+    class Meta:
+        model = QuotationTerm
+        fields = ["heading", "content"]
+        widgets = {"heading": forms.TextInput(attrs={"class": "form-control form-control-sm"}),
+                   "content": forms.Textarea(attrs={"rows": 3, "class": "form-control form-control-sm"})}
+
+
+TermFormSet = inlineformset_factory(QuotationRevision, QuotationTerm, form=TermForm, extra=0, can_delete=True)
+
+
+def term_formset(data, rev, initial_rows):
+    """Terms formset; a revision without saved rows starts from initial_rows (template or older fields)."""
+    if rev.pk and rev.terms.exists():
+        return TermFormSet(data, instance=rev, prefix="terms")
+    factory = inlineformset_factory(QuotationRevision, QuotationTerm, form=TermForm, can_delete=True,
+                                    extra=len(initial_rows))
+    return factory(data, instance=rev, prefix="terms",
+                   initial=[{"heading": h, "content": c} for h, c in initial_rows])
+
+
+class QuotationTemplateForm(CrmFormMixin, forms.ModelForm):
+    fieldsets = [
+        ("Letterhead", ["letterhead_tagline", "arabic_name"]),
+        ("Cover letter defaults", ["letter_body", "letter_closing", "signatory_designation", "signature_label"]),
+        ("Price schedule", ["schedule_note", "show_unit"]),
+        ("Footer", ["footer_tagline", "footer_website", "footer_business_lines", "footer_contact"]),
+    ]
+
+    class Meta:
+        model = QuotationTemplate
+        fields = ["letterhead_tagline", "arabic_name", "letter_body", "letter_closing", "signatory_designation",
+                  "signature_label", "schedule_note", "show_unit", "footer_tagline", "footer_website",
+                  "footer_business_lines", "footer_contact"]
+        widgets = {"letter_body": forms.Textarea(attrs={"rows": 9}), "letter_closing": forms.Textarea(attrs={"rows": 2})}
+
+
+class DefaultTermForm(forms.Form):
+    heading = forms.CharField(max_length=100, widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}))
+    content = forms.CharField(widget=forms.Textarea(attrs={"rows": 3, "class": "form-control form-control-sm"}))
+
+
+DefaultTermFormSet = forms.formset_factory(DefaultTermForm, extra=0, can_delete=True)
 
 
 class DecisionForm(forms.Form):

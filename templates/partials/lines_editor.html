@@ -4,12 +4,12 @@
   {{ formset.management_form }}
   {% if formset.non_form_errors %}<div class="alert alert-danger m-3">{{ formset.non_form_errors }}</div>{% endif %}
   <div class="table-responsive"><table class="table table-sm align-top mb-0">
-    <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Disc. %</th><th>Tax</th><th class="text-end">Net</th><th></th></tr></thead>
+    <thead><tr>{% if formset.empty_form.part_no %}<th>Part no.</th>{% endif %}<th>Description</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Disc. %</th><th>Tax</th><th class="text-end">Net</th><th></th></tr></thead>
     <tbody data-formset-body>{% for f in formset %}{% include "partials/line_row.html" %}{% endfor %}</tbody>
     <tfoot>
-      <tr><td colspan="6" class="text-end">Subtotal (after line discounts)</td><td class="text-end" data-sum-subtotal>—</td><td></td></tr>
-      <tr><td colspan="6" class="text-end">Tax (before any overall discount)</td><td class="text-end" data-sum-tax>—</td><td></td></tr>
-      <tr class="fw-semibold"><td colspan="6" class="text-end">Estimated total</td><td class="text-end" data-sum-total>—</td><td></td></tr>
+      <tr><td colspan="{% if formset.empty_form.part_no %}7{% else %}6{% endif %}" class="text-end">Subtotal (after line discounts)</td><td class="text-end" data-sum-subtotal>—</td><td></td></tr>
+      <tr><td colspan="{% if formset.empty_form.part_no %}7{% else %}6{% endif %}" class="text-end">Tax (before any overall discount)</td><td class="text-end" data-sum-tax>—</td><td></td></tr>
+      <tr class="fw-semibold"><td colspan="{% if formset.empty_form.part_no %}7{% else %}6{% endif %}" class="text-end">Estimated total</td><td class="text-end" data-sum-total>—</td><td></td></tr>
     </tfoot>
   </table></div>
   <template>{% with f=formset.empty_form %}{% include "partials/line_row.html" %}{% endwith %}</template>

@@ -41,6 +41,7 @@ It cannot be edited. Filter and export to CSV.
 | --- | --- |
 | Company | Name, legal name, TRN, address, contacts (printed on PDFs), currency, financial year start, default quotation validity and payment terms, upload size and allowed file types |
 | Approvals & reminders | Auto-approval threshold (0 = every quotation needs approval), discount limit %, expiry-warning days, e-mail notifications on/off, visit / task / overdue-invoice reminder days, performance rating bands. **Run reminders now** button and last run |
+| Quotation template | Line under the logo, company name in Arabic, default cover letter, closing, signatory designation, price-schedule note, "show unit next to quantity", footer lines and the default commercial terms copied into new quotations. Legal name and TRN under the logo come from the Company tab |
 | Tax rates | VAT 5 % (default), Zero-rated, Exempt; add or deactivate rates. Existing documents keep the rate they were made with |
 | Stages | Lead stages (and which count as "qualified") and opportunity stages with default probability. Hide instead of delete; Won/Lost are fixed |
 | Document numbering | Prefix, year, padding and yearly reset for customers, leads, quotations, orders, invoices, payments, etc. Invoices get their number only when issued, without gaps |

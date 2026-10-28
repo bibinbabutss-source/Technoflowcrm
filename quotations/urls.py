@@ -6,6 +6,7 @@ app_name = "quotations"
 
 urlpatterns = [
     path("", views.QuotationList.as_view(), name="list"),
+    path("template/", views.template_settings, name="template"),
     path("new/", views.quotation_create, name="create"),
     path("<int:pk>/", views.quotation_detail, name="detail"),
     path("<int:pk>/edit/", views.quotation_edit, name="edit"),
@@ -16,5 +17,7 @@ urlpatterns = [
     path("<int:pk>/decline/", views.quotation_decline, name="decline"),
     path("<int:pk>/revise/", views.quotation_revise, name="revise"),
     path("<int:pk>/pdf/", views.quotation_pdf, name="pdf"),
+    path("<int:pk>/word/", views.quotation_docx, name="docx"),
+    path("<int:pk>/preview/", views.quotation_preview, name="preview"),
     path("<int:pk>/delete/", views.quotation_delete, name="delete"),
 ]

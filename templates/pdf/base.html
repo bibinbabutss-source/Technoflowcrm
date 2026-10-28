@@ -20,7 +20,7 @@
 </style></head>
 <body>
 <table><tr>
-  <td style="width:55%"><img src="{% static 'img/technoflow-logo.png' %}" style="height:46pt"></td>
+  <td style="width:55%"><img src="{% static 'img/technoflow-logo-full.png' %}" style="width:112pt;height:46pt"></td>
   <td class="r muted" style="font-size:8pt">
     <b style="color:#23262A">{{ company.legal_name|default:company.company_name }}</b><br>
     {% if company.address %}{{ company.address|linebreaksbr }}<br>{% endif %}{{ company.city }}{% if company.country %}, {{ company.country }}{% endif %}<br>

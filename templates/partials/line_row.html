@@ -1,4 +1,5 @@
 <tr data-line>
+  {% if f.part_no %}<td style="width:130px">{{ f.part_no }}{{ f.part_no.errors }}</td>{% endif %}
   <td style="min-width:240px">{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.description }}{{ f.description.errors }}</td>
   <td style="width:95px">{{ f.quantity }}{{ f.quantity.errors }}</td>
   <td style="width:80px">{{ f.unit }}{{ f.unit.errors }}</td>

@@ -1,20 +1,41 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
-<div class="tf-page-head"><div><h1>{{ title }}</h1><p>Saved as a draft. Nothing is sent or locked until you submit it.</p></div></div>
+<div class="tf-page-head"><div><h1>{{ title }}</h1><p>Saved as a draft. Nothing is sent or locked until you submit it. Every section below is printed on the quotation PDF.</p></div></div>
 {% if no_tax_rates %}<div class="alert alert-warning">No tax rates are set up. The System Administrator must add at least one in Settings &gt; Tax rates before quotations can be saved.</div>{% endif %}
 <form method="post" novalidate>{% csrf_token %}
-  {% if qform.non_field_errors or rform.non_field_errors %}<div class="alert alert-danger">{{ qform.non_field_errors }}{{ rform.non_field_errors }}</div>{% elif qform.errors or rform.errors or formset.total_error_count %}<div class="alert alert-danger">Please correct the highlighted fields.</div>{% endif %}
+  {% if qform.non_field_errors or rform.non_field_errors %}<div class="alert alert-danger">{{ qform.non_field_errors }}{{ rform.non_field_errors }}</div>{% elif qform.errors or rform.errors or formset.total_error_count or terms.total_error_count %}<div class="alert alert-danger">Please correct the highlighted fields.</div>{% endif %}
+  {% with fs=rform.get_fieldsets %}
   <div class="row g-3">
     <div class="col-lg-4"><div class="card h-100"><div class="card-header">Customer</div><div class="card-body">
       {% for field in qform %}{% include "partials/field.html" %}{% endfor %}
     </div></div></div>
-    <div class="col-lg-8"><div class="card h-100"><div class="card-header">Quotation details</div><div class="card-body"><div class="row">
-      {% for title, fields in rform.get_fieldsets %}{% for field in fields %}<div class="{% if field.field.widget.attrs.rows %}col-md-6{% else %}col-md-4{% endif %}">{% include "partials/field.html" %}</div>{% endfor %}{% endfor %}
-    </div></div></div></div>
+    {% include "quotations/_fieldset.html" with section=fs.0 width="col-lg-8" %}
+    {% include "quotations/_fieldset.html" with section=fs.1 width="col-12" %}
+    {% include "quotations/_fieldset.html" with section=fs.2 width="col-12" %}
   </div>
   {% include "partials/lines_editor.html" %}
-  <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit">Save draft</button>
+  {% if terms %}
+  <div class="card mt-3" data-formset="{{ terms.prefix }}">
+    <div class="card-header d-flex justify-content-between align-items-center">Commercial terms and conditions
+      <button class="btn btn-sm btn-outline-primary" type="button" data-formset-add><i class="bi bi-plus-lg me-1"></i>Add term</button></div>
+    {{ terms.management_form }}
+    {% if terms.non_form_errors %}<div class="alert alert-danger m-3">{{ terms.non_form_errors }}</div>{% endif %}
+    <div class="table-responsive"><table class="table table-sm align-top mb-0">
+      <thead><tr><th style="width:260px">Heading</th><th>Text <span class="fw-normal text-secondary small">(blank line = new paragraph, **text** = bold)</span></th><th style="width:90px"></th></tr></thead>
+      <tbody data-formset-body>{% for f in terms %}{% include "quotations/_term_row.html" %}{% endfor %}</tbody>
+    </table></div>
+    <template>{% with f=terms.empty_form %}{% include "quotations/_term_row.html" %}{% endwith %}</template>
+    <div class="card-body small text-secondary border-top">Printed as the two-column "Commercial terms and conditions" table, in this order. Tick Remove to leave a row out.</div>
+  </div>
+  {% endif %}
+
+  <div class="row g-3 mt-0">{% include "quotations/_fieldset.html" with section=fs.3 width="col-12" %}</div>
+  {% endwith %}
+  <div class="d-flex flex-wrap gap-2 mt-3">
+    <button class="btn btn-primary" type="submit" name="then" value="detail">Save draft</button>
+    <button class="btn btn-outline-primary" type="submit" name="then" value="continue">Save and keep editing</button>
+    <button class="btn btn-outline-primary" type="submit" name="then" value="preview"><i class="bi bi-eye me-1"></i>Save and preview</button>
     <a class="btn btn-outline-secondary" href="{% if quotation %}{{ quotation.get_absolute_url }}{% else %}{% url 'quotations:list' %}{% endif %}">Cancel</a></div>
 </form>
 {% endblock %}

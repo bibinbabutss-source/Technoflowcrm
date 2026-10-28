@@ -1,0 +1,5 @@
+<tr>
+  <td>{% for h in f.hidden_fields %}{{ h }}{% endfor %}{{ f.heading }}{{ f.heading.errors }}</td>
+  <td>{{ f.content }}{{ f.content.errors }}</td>
+  <td class="text-center">{% if f.DELETE %}<label class="small text-secondary">{{ f.DELETE }} Remove</label>{% endif %}</td>
+</tr>

@@ -2,7 +2,7 @@
 
 Django 5.2 + PostgreSQL customer relationship management system for Technoflow Trading LLC.
 
-**Status: all 8 phases delivered.** 13 modules, 5 roles, 44 reports, 145 automated tests.
+**Status: all 8 phases delivered.** 13 modules, 5 roles, 44 reports, 156 automated tests.
 What was tested, and what still needs your own setup (e-mail server, document storage online), is listed in
 **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**.
 
@@ -60,7 +60,7 @@ python manage.py create_system_admin --username aniq --email aniq@technoflow.com
 python -m pytest
 ```
 
-145 tests: sign-in, lockout, MFA, password rules, role limits, permissions on every module page per role,
+156 tests: sign-in, lockout, MFA, password rules, role limits, permissions on every module page per role,
 record scope, the complete Lead → Quotation → Approval → Order → Invoice → Payment → Reversal workflow through
 the real web forms, calculations, revisions, documents security, imports, KPIs, notifications and deployment
 readiness.

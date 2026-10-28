@@ -23,8 +23,8 @@ The phase plan is the one in the Phase 1 document *"Technoflow CRM — Phase 1 A
 
 | Check | What it does | Result |
 | --- | --- | --- |
-| Automated tests (`python -m pytest`) on SQLite | 145 tests: sign-in, lockout, MFA, passwords, role limits, permissions per page per role, record scope, full workflow through the web forms, create/edit forms of every module, calculations, revisions, documents, imports, exports, every report in every format, KPIs, notifications, deployment settings | **145 passed** |
-| Same 145 tests on PostgreSQL 16 | Same suite against a real PostgreSQL database | **145 passed** |
+| Automated tests (`python -m pytest`) on SQLite | 156 tests: sign-in, lockout, MFA, passwords, role limits, permissions per page per role, record scope, full workflow through the web forms, create/edit forms of every module, calculations, revisions, documents, imports, exports, every report in every format, KPIs, notifications, deployment settings | **156 passed** |
+| Same 156 tests on PostgreSQL 16 | Same suite against a real PostgreSQL database | **156 passed** |
 | Page crawl (`tools/crawl.py`) | Signs in as each demo role and opens every page reachable by links (lists, filters, details, edit forms, PDFs, exports, chart data), with demo data loaded | admin 293 pages, director 236, accounts 89, engineer 218, coordinator 200: **0 server errors, 0 links to forbidden pages** (dev and PostgreSQL) |
 | Browser test (`tools/ui_smoke.py`, Chromium via Playwright) | Each role at desktop 1366 px and phone 390 px: sign-in, dashboard cards and charts, every menu page, no horizontal scrolling, search, no JavaScript errors; quotation form "Add line" and live totals; lead Kanban move; pipeline Kanban drag & drop; notification bell | **77/77 passed** (runserver + SQLite); **63/63 passed** on Gunicorn + PostgreSQL with production settings (demo.admin not present there by design) |
 | Production build rehearsal | `build.sh` steps with `config.settings.prod` against PostgreSQL 16: `check --deploy`, `collectstatic`, `migrate`, first admin, demo users, demo data; Gunicorn serving; `/healthz/` with a foreign Host header; security headers (HSTS, X-Frame-Options, nosniff, Referrer-Policy) | **Passed** (one expected warning: W021 HSTS preload) |
@@ -66,6 +66,11 @@ invoiced 102,900, collected 10,000, outstanding 92,900. **Passed.**
 
 "Crawl only" means the page or form opened without error for each role (and the action is built on the same
 tested services), but submitting it was not exercised by a test.
+
+## Update 28-Oct-2026: quotation format and logo
+Quotations now print in Technoflow's own format (cover letter, price schedule, commercial terms), every section
+is editable in the CRM, a Word export was added, and the official logo replaced the old one. Details, tests
+and limitations: [QUOTATION_LOGO_UPDATE.md](QUOTATION_LOGO_UPDATE.md).
 
 ## 3. Bugs found and fixed during Phases 3–8 testing
 
