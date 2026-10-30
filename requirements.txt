@@ -11,6 +11,7 @@ whitenoise==6.9.0              # serves static files in production
 # testing
 pytest==9.1.1
 pytest-django==4.14.0
+beautifulsoup4==4.15.0          # reads pages in the web tests
 
 # documents, exports, two-step sign-in
 openpyxl==3.1.5                # Excel import / export

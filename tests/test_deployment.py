@@ -185,3 +185,20 @@ def test_migrations_are_complete():
         env={**__import__("os").environ, "DJANGO_SETTINGS_MODULE": "config.settings.test"},
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_production_static_files_collect(tmp_path):
+    """Render runs collectstatic with the manifest storage, which fails on any missing file a CSS/JS references
+    (for example a source map). Run exactly that here."""
+    env = {**__import__("os").environ, "DJANGO_SETTINGS_MODULE": "config.settings.test"}
+    code = (
+        "import django; from django.conf import settings; "
+        f"settings.STATIC_ROOT = r'{tmp_path}'; "
+        "settings.STORAGES = {**settings.STORAGES, 'staticfiles': "
+        "{'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'}}; "
+        "django.setup(); from django.core.management import call_command; "
+        "call_command('collectstatic', interactive=False, verbosity=0)"
+    )
+    result = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, env=env)
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert (tmp_path / "staticfiles.json").exists()
