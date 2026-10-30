@@ -138,8 +138,19 @@ class EmployeeProfile(TimeStampedModel):
 
     # -- permissions --------------------------------------------------
     def capability_codes(self):
+        """
+        The role's permissions, minus the Finance permissions while the Finance module is turned off
+        (Settings > Modules & approvals). Roles keep their stored permissions, so turning Finance on again
+        restores access exactly as before.
+        """
         if not hasattr(self, "_cap_cache"):
-            self._cap_cache = set(self.role.capabilities.values_list("code", flat=True))
+            codes = set(self.role.capabilities.values_list("code", flat=True))
+            if codes & caps.FINANCE_CAPABILITIES:
+                from core.models import CompanyProfile
+
+                if not CompanyProfile.get().finance_enabled:
+                    codes -= caps.FINANCE_CAPABILITIES
+            self._cap_cache = codes
         return self._cap_cache
 
 

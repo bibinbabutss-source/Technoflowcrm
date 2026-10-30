@@ -147,9 +147,9 @@ with sync_playwright() as p:
     csv_path = os.path.join(OUT, "ui_leads.csv")
     import time
     with open(csv_path, "w", encoding="utf-8") as fh:
-        fh.write("Lead title,Company name,Sales Engineer,Date received,Estimated value\n"
-                 f"UI import lead A,UI Test {int(time.time())} LLC,demo.engineer,2026-02-10,12000\n"
-                 "UI import lead B,UI Test Two LLC,nobody.here,2026-02-11,5000\n")
+        fh.write("Lead title,Company name,Sales Engineer,Date received,Estimated value,Lead category\n"
+                 f"UI import lead A,UI Test {int(time.time())} LLC,demo.engineer,2026-02-10,12000,Tender\n"
+                 "UI import lead B,UI Test Two LLC,nobody.here,2026-02-11,5000,Job in Hand\n")
     for mobile in (True, False):  # phone first: it cancels, so the desktop run still has a new row to import
         tag = "director" + ("-mobile" if mobile else "")
         ctx, page, errors = session(b, "demo.director", mobile)

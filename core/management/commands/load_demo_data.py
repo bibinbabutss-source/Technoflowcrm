@@ -121,6 +121,7 @@ class Command(BaseCommand):
         today = timezone.localdate()
         eng, coord, director, accounts = u["demo.engineer"], u["demo.coordinator"], u["demo.director"], \
             u["demo.accounts"]
+        approver = u.get("demo.owner") or director  # approvals are the Owner's (Director when no Owner)
         vat = TaxRate.default()
         counts = dict.fromkeys(["customers", "leads", "opportunities", "quotations", "orders", "invoices",
                                 "payments", "visits", "tasks", "communications"], 0)
@@ -199,8 +200,8 @@ class Command(BaseCommand):
             if outcome == "approval":
                 continue
             if rev.status == "submitted":
-                _as(director)
-                q_services.approve(rev, director, "Approved (demo).")
+                _as(approver)
+                q_services.approve(rev, approver, "Approved (demo).")
                 rev.refresh_from_db()
             _as(eng)
             q_services.mark_sent(rev, eng)
@@ -288,6 +289,34 @@ class Command(BaseCommand):
         for kpi in KPIDefinition.objects.filter(is_active=True):
             SalesTarget.objects.get_or_create(employee=eng, kpi=kpi, period_type="month", period_start=month_start,
                                               defaults={"target_value": defaults[kpi.unit]})
+
+        # lead categories (every lead has one) and uploaded quotations with revisions (fictional documents)
+        cats = [c for c, _ in Lead.Category.choices]
+        for i, ld in enumerate(Lead.objects.filter(company_name__startswith="Demo: ").order_by("pk")):
+            Lead.objects.filter(pk=ld.pk).update(category=cats[i % 3])
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from quotations import uploads as q_uploads
+
+        def demo_pdf(label):
+            return SimpleUploadedFile(f"demo_quotation_{label}.pdf", b"%PDF-1.4\n% fictional demo quotation "
+                                      + label.encode() + b"\n%%EOF\n", "application/pdf")
+        _as(eng)
+        uq = q_uploads.create_uploaded(customer=customers[2], salesperson=eng, user=eng, file=demo_pdf("original"),
+                                       value=Decimal("48500"), quotation_date=today - datetime.timedelta(days=12),
+                                       external_number="TF-Q-DEMO-101", notes="First offer (demo).")
+        submitted = q_services.submit(uq.current, eng)
+        _as(approver)
+        if submitted.status == "submitted":
+            q_services.approve(submitted, approver, "Approved (demo).")
+        _as(eng)
+        q_uploads.upload_revision(uq, user=eng, file=demo_pdf("r1"), value=Decimal("46000"),
+                                  quotation_date=today - datetime.timedelta(days=3),
+                                  notes="Customer asked for a 5% better price (demo).")
+        uq2 = q_uploads.create_uploaded(customer=customers[3], salesperson=eng, user=eng, file=demo_pdf("pending"),
+                                        value=Decimal("265000"), quotation_date=today,
+                                        external_number="TF-Q-DEMO-102", notes="Large chiller package (demo).")
+        q_services.submit(uq2.current, eng)
+        counts["quotations"] += 2
 
         # daily work reports (self-reported, fictional): one reviewed, one submitted, one draft
         from performance.models import DailyReport

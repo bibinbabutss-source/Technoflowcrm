@@ -11,14 +11,16 @@ def sync_roles_and_capabilities():
     Existing roles keep the limits and permissions set by the Administrator;
     default assignments are applied only to newly created capabilities.
     """
-    roles = {}
+    roles, new_roles = {}, set()
     for order, (code, name, limit, scope, description) in enumerate(caps.ROLES):
-        role, _ = Role.objects.get_or_create(
+        role, created = Role.objects.get_or_create(
             code=code,
             defaults={"name": name, "max_accounts": limit, "data_scope": scope,
                       "description": description, "sort_order": order},
         )
         roles[code] = role
+        if created:
+            new_roles.add(code)
 
     for code, module, label, role_codes in caps.CAPABILITIES:
         cap, created = Capability.objects.get_or_create(code=code, defaults={"module": module, "label": label})
@@ -28,6 +30,10 @@ def sync_roles_and_capabilities():
         if created:
             for rc in role_codes:
                 roles[rc].capabilities.add(cap)
+
+    # A newly created Owner role starts with every permission (later changes in Roles & Limits are kept).
+    if caps.OWNER in new_roles:
+        roles[caps.OWNER].capabilities.add(*Capability.objects.all())
 
     # The System Administrator must always be able to administer the system.
     admin = roles[caps.ADMIN]

@@ -38,7 +38,15 @@ ZERO = Decimal("0.00")
 SALES_ROLES = [caps.DIRECTOR, caps.COORDINATOR, caps.ENGINEER]
 
 PRESETS = [("today", "Today"), ("yesterday", "Yesterday"), ("this_week", "This week"), ("last_week", "Last week"),
-           ("this_month", "This month"), ("last_month", "Last month"), ("custom", "Custom range")]
+           ("this_month", "This month"), ("last_month", "Last month"), ("this_quarter", "This quarter"),
+           ("last_quarter", "Last quarter"), ("this_year", "This year"), ("last_year", "Last year"),
+           ("custom", "Custom range")]
+
+
+def quarter_of(d):
+    first = datetime.date(d.year, 3 * ((d.month - 1) // 3) + 1, 1)
+    nxt = datetime.date(first.year + (first.month + 2) // 12, (first.month + 2) % 12 + 1, 1)
+    return first, nxt - datetime.timedelta(days=1)
 
 
 # ------------------------------------------------------------------ periods
@@ -59,6 +67,14 @@ def period_for(preset, today=None, start=None, end=None):
     if preset == "last_month":
         last_end = first - datetime.timedelta(days=1)
         return last_end.replace(day=1), last_end, preset
+    if preset == "this_quarter":
+        return (*quarter_of(today), preset)
+    if preset == "last_quarter":
+        return (*quarter_of(quarter_of(today)[0] - datetime.timedelta(days=1)), preset)
+    if preset == "this_year":
+        return datetime.date(today.year, 1, 1), datetime.date(today.year, 12, 31), preset
+    if preset == "last_year":
+        return datetime.date(today.year - 1, 1, 1), datetime.date(today.year - 1, 12, 31), preset
     if preset == "custom" and start and end:
         if end < start:
             start, end = end, start
@@ -130,12 +146,17 @@ def _dt(start, end):
 
 
 # ------------------------------------------------------------------ list figures (grouped, few queries)
-def list_figures(uids, start, end):
-    """Figures for the employee list: {uid: {...}} computed with grouped queries (no per-row queries)."""
+def list_figures(uids, start, end, target_period="month"):
+    """
+    Figures for the employee list: {uid: {...}} computed with grouped queries (no per-row queries).
+    target_period: "month" / "quarter" / "year" - the target compared is the "Won deals value" target of that
+    period containing the end of the selected date range.
+    """
     from core.models import AuditLog
-    from leads.models import Lead
+    from leads.models import Lead, LeadAssignment
     from performance.models import KPIDefinition, SalesTarget
-    from quotations.models import Quotation
+    from quotations.models import Quotation, QuotationRevision
+    from reporting.metrics import period_bounds
     from sales.models import Opportunity
     from tasks.models import Task
     from visits.models import Visit
@@ -162,11 +183,37 @@ def list_figures(uids, start, end):
                                          due_date__lt=today), "assigned_to_id")
     last = {r["user_id"]: r["t"] for r in AuditLog.objects.filter(user_id__in=uids).exclude(
         action__in=["login", "logout", "login_failed"]).values("user_id").annotate(t=Max("timestamp")).order_by()}
-    # monthly sales target = the "Won deals value" target of the month that contains the period's end
-    m_start, m_end = month_of(end)
+    # extra figures for the Owner (each counted once per employee)
+    assigned = _distinct_count(LeadAssignment.objects.filter(engineer_id__in=uids, assigned_at__date__gte=start,
+                                                             assigned_at__date__lte=end), "engineer_id", "lead")
+    planned = _count(Visit.objects.filter(assigned_to_id__in=uids, visit_date__gte=start, visit_date__lte=end)
+                     .exclude(status="cancelled"), "assigned_to_id")
+    opps_created = _count(owned(Opportunity.objects.filter(created_at__date__gte=start, created_at__date__lte=end),
+                                "opportunity", uids), "owner_uid")
+    uploaded = _count(Quotation.objects.filter(salesperson_id__in=uids, source="uploaded",
+                                               created_at__date__gte=start, created_at__date__lte=end),
+                      "salesperson_id")
+    revised = _distinct_count(QuotationRevision.objects.filter(
+        quotation__salesperson_id__in=uids, version__gt=1, created_at__date__gte=start, created_at__date__lte=end),
+        "quotation__salesperson_id", "quotation")
+    open_tasks = _count(Task.objects.filter(assigned_to_id__in=uids, status__in=Task.OPEN_STATUSES,
+                                            due_date__gte=today), "assigned_to_id")
+    upcoming_visits = _count(Visit.objects.filter(assigned_to_id__in=uids, status__in=Visit.UPCOMING_STATUSES,
+                                                  visit_date__gte=today), "assigned_to_id")
+    missed = _count(Visit.objects.filter(assigned_to_id__in=uids, status__in=Visit.UPCOMING_STATUSES,
+                                         visit_date__lt=today), "assigned_to_id")
+    late_leads = _count(owned(Lead.objects.filter(is_archived=False, stage__is_won=False, stage__is_lost=False,
+                                                  next_follow_up__lt=today), "lead", uids), "owner_uid")
+    # sales target = the "Won deals value" target of the month / quarter / year containing the period's end
+    target_period = target_period if target_period in ("month", "quarter", "year") else "month"
+    m_start, m_end = period_bounds(target_period, end)
     kpi = KPIDefinition.objects.filter(code="won_value").first()
     targets = {t.employee_id: t.target_value for t in SalesTarget.objects.filter(
-        kpi=kpi, period_type="month", period_start=m_start, employee_id__in=uids)} if kpi else {}
+        kpi=kpi, period_type=target_period, period_start=m_start, employee_id__in=uids)} if kpi else {}
+    pipeline = _sum(owned(Opportunity.objects.filter(is_archived=False, stage__is_won=False, stage__is_lost=False,
+                                                     expected_close_date__gte=m_start,
+                                                     expected_close_date__lte=m_end), "opportunity", uids),
+                    "owner_uid", "estimated_value")
     month_won = _sum(owned(Opportunity.objects.filter(stage__is_won=True, closed_at__date__gte=m_start,
                                                       closed_at__date__lte=m_end), "opportunity", uids)
                      .filter(stage__is_won=True), "owner_uid", "estimated_value")
@@ -181,8 +228,31 @@ def list_figures(uids, start, end):
             "target": target, "target_actual": actual, "achievement": achievement(actual, target),
             "pending_followups": followups.get(uid, 0), "overdue_tasks": overdue.get(uid, 0),
             "last_activity": last.get(uid), "target_month": m_start,
+            "target_period": target_period, "target_end": m_end,
+            "leads_assigned": assigned.get(uid, 0), "visits_planned": planned.get(uid, 0),
+            "opportunities_created": opps_created.get(uid, 0), "quotations_uploaded": uploaded.get(uid, 0),
+            "quotations_revised": revised.get(uid, 0),
+            "pending_activities": open_tasks.get(uid, 0) + upcoming_visits.get(uid, 0),
+            "overdue_activities": overdue.get(uid, 0) + missed.get(uid, 0) + late_leads.get(uid, 0),
+            "pipeline_in_target_period": pipeline.get(uid, ZERO),
+            "target_status": target_status(actual, target, pipeline.get(uid, ZERO)),
         }
     return out
+
+
+def target_status(actual, target, pipeline=ZERO):
+    """achieved / on_track (won + open pipeline due in the period would reach it) / behind / none."""
+    if target is None or Decimal(target) <= 0:
+        return "none"
+    if Decimal(actual or 0) >= Decimal(target):
+        return "achieved"
+    if Decimal(actual or 0) + Decimal(pipeline or 0) >= Decimal(target):
+        return "on_track"
+    return "behind"
+
+
+TARGET_STATUS = {"achieved": ("Target achieved", "good"), "on_track": ("Pipeline can reach target", "info"),
+                 "behind": ("Below target", "bad"), "none": ("No target set", "neutral")}
 
 
 def achievement(actual, target):
@@ -193,8 +263,11 @@ def achievement(actual, target):
 
 
 def totals(rows, keys=("leads_created", "open_leads", "visits_completed", "quotations_created", "deals_won",
-                       "deals_lost", "won_value", "pending_followups", "overdue_tasks")):
-    return {k: sum((r[k] for r in rows), ZERO if k == "won_value" else 0) for k in keys}
+                       "deals_lost", "won_value", "pending_followups", "overdue_tasks", "leads_assigned",
+                       "visits_planned", "opportunities_created", "quotations_uploaded", "quotations_revised",
+                       "pending_activities", "overdue_activities")):
+    money = {"won_value"}
+    return {k: sum((r.get(k, 0) for r in rows), ZERO if k in money else 0) for k in keys}
 
 
 # ------------------------------------------------------------------ one employee in detail

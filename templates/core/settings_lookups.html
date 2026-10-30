@@ -13,9 +13,9 @@
       <div class="table-responsive mb-4"><table class="table table-hover">
         <thead><tr><th>Value</th><th>Order</th><th>Status</th><th></th></tr></thead>
         <tbody>{% for v in values %}<tr><td>{{ v.value }}</td><td>{{ v.sort_order }}</td>
-          <td>{% if v.is_active %}<span class="badge-status badge-active">In use</span>{% else %}<span class="badge-status badge-inactive">Hidden</span>{% endif %}</td>
-          <td class="text-end"><form method="post" action="{% url 'core:lookup_toggle' v.pk %}" class="d-inline" data-no-spinner>{% csrf_token %}
-            <button class="btn btn-sm btn-outline-secondary" type="submit">{% if v.is_active %}Hide{% else %}Show{% endif %}</button></form></td></tr>{% endfor %}</tbody>
+          <td>{% if v.is_active %}<span class="badge-status badge-active"><i class="bi bi-check2"></i> Active</span>{% else %}<span class="badge-status badge-inactive">Inactive</span>{% endif %}</td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-primary me-1" href="{% url 'core:lookup_edit' v.pk %}">Edit</a><form method="post" action="{% url 'core:lookup_toggle' v.pk %}" class="d-inline" data-no-spinner>{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary" type="submit">{% if v.is_active %}Deactivate{% else %}Activate{% endif %}</button></form></td></tr>{% endfor %}</tbody>
       </table></div>
       {% else %}<div class="tf-empty"><i class="bi bi-list-ul"></i>No values in this list yet.</div>{% endif %}
       <h3 class="mb-2">Add a value</h3>

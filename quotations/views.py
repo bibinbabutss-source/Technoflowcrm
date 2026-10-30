@@ -2,7 +2,10 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.shortcuts import redirect, render
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import content_disposition_header
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_sameorigin
@@ -10,6 +13,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.permissions import capability_required, has_capability, scope_queryset
 from core import activity
+from core.audit import change_history, log_action
 from core.crud import (ChoiceFilter, Column, CrmListView, DateRangeFilter, UserFilter, badge, get_scoped_or_404,
                        money)
 from core.params import get_int
@@ -17,9 +21,10 @@ from core.pdf import pdf_response
 from customers.models import Customer
 from sales.models import Opportunity
 
-from . import document, services
+from . import document, services, uploads
 from .forms import (AcceptanceForm, DecisionForm, DeclineForm, DefaultTermFormSet, LineFormSet, QuotationForm,
-                    QuotationTemplateForm, ReviseForm, RevisionForm, term_formset)
+                    QuotationTemplateForm, ReviseForm, RevisionForm, UploadQuotationForm, UploadRevisionForm,
+                    term_formset)
 from .models import OWNER_FIELDS, Quotation, QuotationRevision, QuotationTemplate
 
 S = QuotationRevision.Status
@@ -38,16 +43,23 @@ class QuotationList(CrmListView):
     icon = "file-earmark-text"
     owner_fields = OWNER_FIELDS
     archive_field = None
-    search_fields = ("number", "customer__company_name", "opportunity__title", "revisions__lines__description")
-    create_url = "quotations:create"
+    search_fields = ("number", "external_number", "customer__company_name", "opportunity__title",
+                     "revisions__lines__description")
+    subtitle = "Quotations from your quotation system (uploaded) and any prepared in the CRM. One row per quotation."
+    template_name = "quotations/list.html"
+    create_url = "quotations:upload"
     create_capability = "quotations.edit"
-    create_label = "New quotation"
+    create_label = "Upload quotation"
+    view_tabs = [("List", "quotations:list", "list-ul"), ("Dashboard", "dashboards:quotations", "speedometer2")]
+    current_tab = "quotations:list"
     columns = [
         Column("Number", lambda q: q.display_number, link=True),
         Column("Date", "quotation_date", date=True),
         Column("Customer", "customer.company_name"),
         Column("Opportunity", lambda q: q.opportunity.title if q.opportunity_id else "—"),
-        Column("Salesperson", "salesperson"),
+        Column("Source", render=lambda q: badge("Uploaded", "info") if q.is_uploaded else badge("CRM", "neutral"),
+               text=lambda q: q.get_source_display()),
+        Column("Responsible", "salesperson"),
         Column("Grand total", "grand_total", money=True),
         Column("Currency", "currency"),
         Column("Expiry", "expiry_date", date=True),
@@ -67,7 +79,8 @@ class QuotationList(CrmListView):
             ChoiceFilter("special", "Show", [("expiring", "Expiring in 14 days"), ("open", "Not yet decided")],
                          lookups={"expiring": Q(status__in=["approved", "sent"], expiry_date__lte=soon),
                                   "open": Q(status__in=["draft", "submitted", "approved", "sent"])}),
-            UserFilter("employee", "Salesperson", ["salesperson"]),
+            UserFilter("employee", "Responsible employee", ["salesperson"]),
+            ChoiceFilter("source", "Source", Quotation.Source.choices),
             DateRangeFilter("date", "Quotation date", "quotation_date"),
             DateRangeFilter("sent", "Sent to customer", "revisions__sent_at"),
         ]
@@ -239,28 +252,106 @@ def quotation_detail(request, pk):
     own = u.pk in (q.salesperson_id, rev.created_by_id, rev.submitted_by_id, q.created_by_id)
     can_edit = has_capability(u, "quotations.edit")
     can_submit = has_capability(u, "quotations.submit")
+    uploaded = q.is_uploaded
+    from owner.rules import may_approve
+
+    approver = may_approve(u)[0]
     actions = {
-        "edit": is_current and can_edit and rev.status == S.DRAFT,
+        "edit": is_current and can_edit and rev.status == S.DRAFT and not uploaded,
         "submit": is_current and can_submit and rev.status == S.DRAFT,
-        "decide": is_current and has_capability(u, "quotations.approve") and rev.status == S.SUBMITTED and not own,
-        "decide_blocked_own": is_current and has_capability(u, "quotations.approve") and rev.status == S.SUBMITTED
-        and own,
+        "decide": is_current and approver and rev.status == S.SUBMITTED and not own,
+        "decide_blocked_own": is_current and approver and rev.status == S.SUBMITTED and own,
         "send": is_current and can_submit and rev.status == S.APPROVED,
         "respond": is_current and can_submit and rev.status in (S.APPROVED, S.SENT),
-        "revise": is_current and can_edit and rev.status in services.REVISABLE and not (
+        "revise": is_current and can_edit and not uploaded and rev.status in services.REVISABLE and not (
             rev.status == S.ACCEPTED and rev.orders.exclude(status="cancelled").exists()),
+        "upload_revision": is_current and can_edit and uploaded and rev.status in uploads.UPLOAD_REVISABLE and not (
+            rev.status == S.ACCEPTED and rev.orders.exclude(status="cancelled").exists()),
+        "mark_final": is_current and can_edit and uploaded and not rev.is_final and rev.status != S.SUPERSEDED,
         "convert": is_current and has_capability(u, "quotations.convert") and rev.status == S.ACCEPTED
-        and not rev.orders.exclude(status="cancelled").exists(),
+        and not uploaded and not rev.orders.exclude(status="cancelled").exists(),
         "delete": q.current_version == 1 and rev.status == S.DRAFT and (q.created_by_id == u.pk or
                                                                           has_capability(u, "users.manage")),
     }
+    revisions = q.revisions.select_related("created_by", "document").defer("document__data").order_by("-version")
     return render(request, "quotations/detail.html", {
+        "uploaded": uploaded, "revision_rows": revisions, "change_rows": change_history(q),
         "q": q, "rev": rev, "lines": rev.lines.select_related("tax_rate"), "is_current": is_current,
         "revisions": q.revisions.all(), "approvals": rev.approvals.select_related("decided_by"),
         "tax_breakdown": services.tax_breakdown(rev) if rev.lines.exists() else {},
         "orders": rev.orders.all(), "actions": actions, "doc": document.build(q, rev),
         "decision_form": DecisionForm(), "activities": activity.for_object(q, u)[:30],
     })
+
+
+# ------------------------------------------------------------------ uploaded quotations (external system)
+@capability_required("quotations.edit")
+def quotation_upload(request):
+    form = UploadQuotationForm(request.POST or None, request.FILES or None, user=request.user,
+                               initial={k: request.GET.get(k) for k in ("customer", "lead", "opportunity")
+                                        if request.GET.get(k)})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        try:
+            q = uploads.create_uploaded(
+                customer=d["customer"], salesperson=d["salesperson"], user=request.user, file=d["file"],
+                value=d["value"], quotation_date=d["quotation_date"], expiry_date=d.get("expiry_date"),
+                external_number=d.get("external_number") or "", opportunity=d.get("opportunity"),
+                lead=d.get("lead"), notes=d.get("notes") or "", is_final=d.get("is_final"), currency=d["currency"])
+        except ValidationError as exc:
+            form.add_error(None, exc.messages)
+        else:
+            messages.success(request, f"Quotation {q.number} uploaded. Submit it for approval when it is ready.")
+            return redirect(q.get_absolute_url())
+    return render(request, "quotations/upload.html", {"form": form, "title": "Upload quotation",
+                                                      "submit_label": "Upload", "cancel_url": reverse("quotations:list")})
+
+
+@capability_required("quotations.edit")
+def quotation_upload_revision(request, pk):
+    q = get_scoped_or_404(Quotation, request.user, pk, OWNER_FIELDS)
+    if not q.is_uploaded:
+        raise Http404
+    cur = q.current
+    form = UploadRevisionForm(request.POST or None, request.FILES or None, user=request.user,
+                              initial={"quotation_date": timezone.localdate(), "value": cur.grand_total})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        try:
+            new = uploads.upload_revision(q, user=request.user, file=d["file"], value=d["value"],
+                                          quotation_date=d["quotation_date"], expiry_date=d.get("expiry_date"),
+                                          notes=d.get("notes") or "", is_final=d.get("is_final"))
+        except ValidationError as exc:
+            form.add_error(None, exc.messages)
+        else:
+            messages.success(request, f"{new.label} of {q.number} uploaded. The previous revision is kept.")
+            return redirect(q.get_absolute_url())
+    return render(request, "quotations/upload.html", {
+        "form": form, "q": q, "title": f"Upload a revision of {q.number}", "submit_label": "Upload revision",
+        "next_label": f"R{cur.version}", "cancel_url": q.get_absolute_url()})
+
+
+@require_POST
+@capability_required("quotations.edit")
+def quotation_mark_final(request, pk):
+    q = get_scoped_or_404(Quotation, request.user, pk, OWNER_FIELDS)
+    return _run(request, q, lambda: uploads.mark_final(q, request.user), "Marked as the final quotation.")
+
+
+@capability_required("quotations.view")
+def quotation_file(request, pk, version):
+    """Download the uploaded document of one revision (any revision, for anyone who may see the quotation)."""
+    q = get_scoped_or_404(Quotation, request.user, pk, OWNER_FIELDS)
+    rev = get_object_or_404(QuotationRevision, quotation=q, version=version)
+    doc = getattr(rev, "document", None)
+    if doc is None:
+        raise Http404
+    log_action("download", q, message=f"Downloaded {rev.label} ({doc.original_name})")
+    response = HttpResponse(bytes(doc.data), content_type=doc.content_type)
+    response["Content-Disposition"] = content_disposition_header(True, doc.original_name)
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    return response
 
 
 def _get_current(request, pk):
@@ -275,6 +366,10 @@ def _run(request, q, fn, success):
         messages.error(request, " ".join(exc.messages))
     else:
         messages.success(request, success)
+    nxt = request.POST.get("next", "")
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()},
+                                               require_https=request.is_secure()):
+        return redirect(nxt)
     return redirect(q.get_absolute_url())
 
 

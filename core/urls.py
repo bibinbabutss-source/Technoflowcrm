@@ -11,6 +11,7 @@ urlpatterns = [
     path("settings/numbering/<int:pk>/", views.numbering_edit, name="numbering_edit"),
     path("settings/lists/", views.lookups, name="lookups"),
     path("settings/lists/<int:pk>/toggle/", views.lookup_toggle, name="lookup_toggle"),
+    path("settings/lists/<int:pk>/edit/", views.lookup_edit, name="lookup_edit"),
     path("settings/workflow/", settings_views.workflow, name="settings_workflow"),
     path("settings/workflow/run-reminders/", settings_views.run_reminders, name="run_reminders"),
     path("settings/tax-rates/", settings_views.tax_rates, name="tax_rates"),

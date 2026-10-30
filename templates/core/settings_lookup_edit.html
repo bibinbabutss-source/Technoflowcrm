@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ obj.get_category_display }}{% endblock %}
+{% block content %}
+{% include "core/_settings_tabs.html" %}
+<div class="card border-top-0" style="border-top-left-radius:0"><div class="card-body" style="max-width:640px">
+  <h2 class="h5">{{ obj.get_category_display }}: {{ obj.value }}</h2>
+  <p class="small text-secondary">Renaming changes the name on every record that uses this value. Deactivated values stay on existing records but cannot be picked for new ones.</p>
+  {% include "partials/form_errors.html" %}
+  <form method="post" novalidate>{% csrf_token %}
+    {% for field in form %}{% if field.name != "category" %}{% include "partials/field.html" %}{% endif %}{% endfor %}
+    <input type="hidden" name="category" value="{{ obj.category }}">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-outline-secondary" href="{% url 'core:lookups' %}?category={{ obj.category }}">Cancel</a>
+  </form>
+</div></div>
+{% endblock %}

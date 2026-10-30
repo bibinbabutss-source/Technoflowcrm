@@ -99,7 +99,11 @@ Nginx site, Gunicorn systemd service, daily reminder and nightly backup timers, 
 | 15 | Daily work reports with manager review and change history (self-reported, shown apart from CRM data) | Daily Reports |
 | 16 | Excel Import Center: customers, leads, visits, tasks, opportunities / completed sales | Import from Excel |
 
-See `docs/ENHANCEMENT_REPORT.md` for modules 14–16 (rules, permissions, test results, deployment and rollback).
+| 17 | Owner role: Owner Dashboard, Pending Approvals, team calendar, monthly / quarterly / yearly targets | Owner Dashboard, Pending Approvals, Team Calendar |
+| 18 | Lead categories (Job in Hand / Tender / Purchase Enquiry), Opportunities menu, uploaded quotations with Original / R1 / R2 / Final revisions, module dashboards, Finance on/off | Leads, Opportunities, Quotations, Modules & Approvals |
+
+See `docs/ENHANCEMENT_REPORT.md` for modules 14–16 and `docs/OWNER_UPDATE_REPORT.md` for 17–18 (rules, permissions,
+test results, deployment and rollback).
 
 ## Project layout
 

@@ -120,12 +120,12 @@ def test_demo_users_skip_full_admin_role_and_can_skip_password_change(admin_user
                  "--allow-production", "--no-password-change")
     created = set(EmployeeProfile.objects.filter(employee_id__startswith="DEMO-")
                   .values_list("user__username", flat=True))
-    assert created == {"demo.director", "demo.accounts", "demo.engineer", "demo.coordinator"}
+    assert created == {"demo.director", "demo.accounts", "demo.engineer", "demo.coordinator", "demo.owner"}
     assert not EmployeeProfile.objects.filter(employee_id__startswith="DEMO-", must_change_password=True).exists()
     # running again (next deploy) changes nothing
     call_command("load_demo_users", "--password-env", "DEMO_USERS_PASSWORD",
                  "--allow-production", "--no-password-change")
-    assert EmployeeProfile.objects.filter(employee_id__startswith="DEMO-").count() == 4
+    assert EmployeeProfile.objects.filter(employee_id__startswith="DEMO-").count() == 5
 
 
 @pytest.mark.django_db
@@ -166,10 +166,15 @@ def test_no_real_secrets_in_committed_files():
 
 def test_render_blueprint_keeps_secrets_out_of_git():
     blueprint = (ROOT / "render.yaml").read_text()
-    for key in ("ADMIN_TEMP_PASSWORD", "DEMO_USERS_PASSWORD", "ADMIN_USERNAME", "ADMIN_URL"):
+    for key in ("ADMIN_TEMP_PASSWORD", "REMOVE_DEMO_DATA", "ADMIN_USERNAME", "ADMIN_URL"):
         block = blueprint.split(f"key: {key}")[1].split("- key:")[0]
         assert "sync: false" in block, key
     assert "generateValue: true" in blueprint.split("key: SECRET_KEY")[1].split("- key:")[0]
+    # a deploy never creates demo data any more
+    assert "LOAD_DEMO_DATA" not in blueprint and "DEMO_USERS_PASSWORD" not in blueprint
+    build = (ROOT / "build.sh").read_text()
+    assert "load_demo_data" not in build.replace("Use load_demo_users / load_demo_data only", "")
+    assert "load_demo_users --" not in build
 
 
 def test_migrations_are_complete():

@@ -93,3 +93,46 @@ def track_model(model, exclude=()):
     pre_save.connect(before, sender=model, weak=False, dispatch_uid=uid + "_pre")
     post_save.connect(after, sender=model, weak=False, dispatch_uid=uid + "_post")
     post_delete.connect(deleted, sender=model, weak=False, dispatch_uid=uid + "_del")
+
+
+def _readable(field, raw):
+    """Turn a logged raw value (a foreign-key id or a choice code) into the text a person understands."""
+    if raw in (None, ""):
+        return ""
+    if field is None:
+        return str(raw)
+    if field.is_relation and field.related_model is not None:
+        try:
+            return str(field.related_model._default_manager.get(pk=raw))
+        except Exception:  # deleted or unreadable record: show the id
+            return f"#{raw}"
+    if field.choices:
+        return str(dict(field.flatchoices).get(raw, raw))
+    if getattr(field, "get_internal_type", lambda: "")() == "BooleanField":
+        return "Yes" if raw in (True, "True") else "No"
+    return str(raw)
+
+
+def change_history(obj, limit=100, skip=()):
+    """
+    Who created / changed / reassigned a record and what changed, from the append-only audit log.
+    Returns [{when, user, action, changes: [(label, old, new)], message}] oldest first.
+    """
+    from .models import AuditLog
+
+    model = obj.__class__
+    fields = {f.name: f for f in model._meta.concrete_fields}
+    logs = (AuditLog.objects.filter(content_type=ContentType.objects.get_for_model(model), object_id=str(obj.pk))
+            .select_related("user").order_by("-timestamp", "-id")[:limit])
+    rows = []
+    for log in reversed(list(logs)):
+        changes = []
+        for name, pair in (log.changes or {}).items():
+            if name in skip or not isinstance(pair, (list, tuple)) or len(pair) != 2:
+                continue
+            f = fields.get(name)
+            label = str(f.verbose_name).capitalize() if f is not None else name
+            changes.append((label, _readable(f, pair[0]), _readable(f, pair[1])))
+        rows.append({"when": log.timestamp, "user": log.user, "action": log.get_action_display(),
+                     "changes": changes, "message": log.message})
+    return rows

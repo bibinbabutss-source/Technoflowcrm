@@ -34,6 +34,8 @@ SORTS = {
     "leads_created": ("Leads created", "leads_created"),
     "visits_completed": ("Visits completed", "visits_completed"),
     "achievement": ("Target achievement", "achievement"),
+    "opportunities_created": ("Opportunities created", "opportunities_created"),
+    "overdue_activities": ("Overdue activities", "overdue_activities"),
 }
 
 
@@ -82,8 +84,18 @@ def team(request):
     if employee:
         qs = qs.filter(pk=employee)
     employees = list(qs)
-    figures = mon.list_figures([e.pk for e in employees], start, end)
-    rows = [{"user": e, "profile": e.profile, **figures[e.pk]} for e in employees]
+    tp = get_choice(request.GET, "tp", ["month", "quarter", "year"], "month")
+    figures = mon.list_figures([e.pk for e in employees], start, end, target_period=tp)
+    rows = [{"user": e, "profile": e.profile, **figures[e.pk],
+             "status_label": mon.TARGET_STATUS[figures[e.pk]["target_status"]][0],
+             "status_tone": mon.TARGET_STATUS[figures[e.pk]["target_status"]][1]} for e in employees]
+    target_filter = get_choice(request.GET, "target", ["achieved", "not_achieved", "none"], "")
+    if target_filter == "achieved":
+        rows = [r for r in rows if r["target_status"] == "achieved"]
+    elif target_filter == "not_achieved":
+        rows = [r for r in rows if r["target_status"] in ("on_track", "behind")]
+    elif target_filter == "none":
+        rows = [r for r in rows if r["target_status"] == "none"]
     sort = get_choice(request.GET, "sort", list(SORTS), "won_value")
     key = SORTS[sort][1]
     if key:
@@ -97,15 +109,19 @@ def team(request):
             raise PermissionDenied
         headers = ["Employee", "Employee ID", "Designation", "Department", "Reporting manager", "Status",
                    "Leads created", "Open leads (now)", "Visits completed", "Quotations created", "Deals won",
-                   "Deals lost", "Won value", "Monthly target (won value)", "Achievement %",
-                   "Pending follow-ups (now)", "Last activity"]
+                   "Deals lost", "Won value", f"Target ({tp}, won value)", "Achievement %",
+                   "Pending follow-ups (now)", "Last activity", "Leads assigned", "Visits planned",
+                   "Opportunities created", "Quotations uploaded", "Quotations revised", "Pending activities (now)",
+                   "Overdue activities (now)", "Target status"]
         data = [[person(r["user"]), r["profile"].employee_id, r["profile"].job_title or r["profile"].role.name,
                  r["profile"].department, person(r["profile"].reporting_manager.user)
                  if r["profile"].reporting_manager else "", "Active" if r["user"].is_active else "Inactive",
                  r["leads_created"], r["open_leads"], r["visits_completed"], r["quotations_created"], r["deals_won"],
                  r["deals_lost"], r["won_value"], r["target"] if r["target"] is not None else "",
                  r["achievement"] if r["achievement"] is not None else "", r["pending_followups"],
-                 timezone.localtime(r["last_activity"]).strftime("%d-%m-%Y %H:%M") if r["last_activity"] else ""]
+                 timezone.localtime(r["last_activity"]).strftime("%d-%m-%Y %H:%M") if r["last_activity"] else "",
+                 r["leads_assigned"], r["visits_planned"], r["opportunities_created"], r["quotations_uploaded"],
+                 r["quotations_revised"], r["pending_activities"], r["overdue_activities"], r["status_label"]]
                 for r in rows]
         name = f"employee_performance_{start:%Y%m%d}_{end:%Y%m%d}"
         return csv_response(name, headers, data) if fmt == "csv" else xlsx_response(name, headers, data)
@@ -119,7 +135,7 @@ def team(request):
         "departments": sorted({p.department for p in profiles if p.department}),
         "managers": sorted({p.reporting_manager.user for p in profiles if p.reporting_manager},
                            key=lambda x: x.get_full_name()),
-        "can_export": has_capability(u, "data.export"),
+        "can_export": has_capability(u, "data.export"), "tp": tp, "target_filter": target_filter,
         **_period_ctx(request, start, end, preset)})
 
 

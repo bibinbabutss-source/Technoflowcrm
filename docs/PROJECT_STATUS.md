@@ -67,6 +67,14 @@ invoiced 102,900, collected 10,000, outstanding 92,900. **Passed.**
 "Crawl only" means the page or form opened without error for each role (and the action is built on the same
 tested services), but submitting it was not exercised by a test.
 
+## Update 30-Oct-2026: Owner, lead categories, opportunities, uploaded quotations
+Added without changing existing features. Full details are in `docs/OWNER_UPDATE_REPORT.md`.
+- 232 automated tests passed (SQLite and PostgreSQL).
+- Crawl: 1,624 pages, 0 errors.
+- Browser checks: 66 (new), 62 and 77, all passed.
+- Upgrade and rollback rehearsed.
+- Not deployed to the live site yet.
+
 ## Update 28-Oct-2026: Employee Performance, Daily Reports, Excel Import Center
 Added without changing existing features. Full details, rules, permissions and test results are in
 `docs/ENHANCEMENT_REPORT.md`.
@@ -112,7 +120,7 @@ and limitations: [QUOTATION_LOGO_UPDATE.md](QUOTATION_LOGO_UPDATE.md).
 
 ## 5. Before going live
 
-1. Set `LOAD_DEMO_DATA=false` (or never run `load_demo_data`) and deactivate demo users.
+1. Remove the demo data (one deploy with `REMOVE_DEMO_DATA=yes`, after a backup); deploys never create it.
 2. Upgrade the Render database before its 30-day expiry, or move to your own server, and set up backups.
 3. Decide document storage (persistent disk) and e-mail (SMTP), then test a password-reset e-mail.
 4. Review Settings: company details and TRN (printed on PDFs), approval threshold and discount limit, tax

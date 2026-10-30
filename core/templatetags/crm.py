@@ -73,3 +73,11 @@ def get_item(mapping, key):
         return mapping.get(key)
     except AttributeError:
         return None
+
+
+@register.filter
+def tone_class(tone):
+    """'good' / 'info' / 'warn' / 'bad' / 'neutral' -> the CSS class of a status badge."""
+    from core.crud import BADGE_CLASSES
+
+    return BADGE_CLASSES.get(tone, "badge-inactive")

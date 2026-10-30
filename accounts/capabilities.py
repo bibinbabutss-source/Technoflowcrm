@@ -11,6 +11,7 @@ Record-level rules apply on top: Sales Engineers see own/assigned records,
 Sales Coordinators also see their linked team members' records (data scope).
 
 Role codes
+    OWNER       Owner (business owner: sees everything, approves; created with every permission)
     ADMIN       System Administrator
     DIRECTOR    Sales Director
     ACCOUNTS    Accounts
@@ -18,15 +19,16 @@ Role codes
     COORDINATOR Sales Coordinator
 """
 
+OWNER = "OWNER"
 ADMIN = "ADMIN"
 DIRECTOR = "DIRECTOR"
 ACCOUNTS = "ACCOUNTS"
 ENGINEER = "ENGINEER"
 COORDINATOR = "COORDINATOR"
 
-ALL = [ADMIN, DIRECTOR, ACCOUNTS, ENGINEER, COORDINATOR]
-SALES = [ADMIN, DIRECTOR, ENGINEER, COORDINATOR]
-MGMT = [ADMIN, DIRECTOR]
+ALL = [OWNER, ADMIN, DIRECTOR, ACCOUNTS, ENGINEER, COORDINATOR]
+SALES = [OWNER, ADMIN, DIRECTOR, ENGINEER, COORDINATOR]
+MGMT = [OWNER, ADMIN, DIRECTOR]
 
 # code, module, label, roles that receive it by default
 CAPABILITIES = [
@@ -82,6 +84,13 @@ CAPABILITIES = [
     ("employees.monitor", "Employee performance",
      "Monitor other employees' dashboards and daily reports (within your data scope)", [ADMIN, DIRECTOR, COORDINATOR]),
     ("dailyreports.submit", "Employee performance", "Submit your own daily work reports", SALES),
+    # ---- owner, approvals, calendars, module settings (enhancement, Oct 2026)
+    ("owner.dashboard", "Owner", "Open the Owner Dashboard (whole-business overview)", [OWNER]),
+    ("approvals.view", "Owner", "Open Pending Approvals (deciding still needs 'Approve or reject quotations')",
+     [OWNER, DIRECTOR]),
+    ("calendar.view", "Owner", "Open the team calendar (employees within your data scope)",
+     [OWNER, ADMIN, DIRECTOR, ENGINEER, COORDINATOR]),
+    ("modules.manage", "Owner", "Turn the Finance module on/off and set the approval backup", [OWNER, ADMIN]),
     # ---- tasks and communications
     ("tasks.view", "Tasks", "Open tasks and follow-ups", ALL),
     ("tasks.create", "Tasks", "Create tasks and comment", ALL),
@@ -111,8 +120,15 @@ CAPABILITIES = [
     ("audit.view", "Administration", "View audit log", [ADMIN]),
 ]
 
+# Permissions switched off while the Finance module is disabled (Settings > Modules & approvals)
+FINANCE_CAPABILITIES = frozenset({
+    "orders.view", "orders.edit", "orders.confirm", "invoices.view", "invoices.manage", "collections.view",
+    "payments.manage", "statements.view", "reports.financial", "quotations.convert",
+})
+
 # code, name, maximum accounts, data scope, description
 ROLES = [
+    (OWNER, "Owner", 1, "all", "Business owner: whole-business dashboard, all approvals, targets and team calendars"),
     (ADMIN, "System Administrator", 1, "all", "Complete system administration and configuration"),
     (DIRECTOR, "Sales Director", 2, "all", "Sales oversight, approvals, targets, forecasting and reports"),
     (ACCOUNTS, "Accounts", 2, "all", "Invoicing, collections, payment tracking and financial reports"),

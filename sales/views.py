@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from core.audit import change_history
 from accounts.permissions import capability_required, has_capability, scope_queryset
 from core import activity
 from core.crud import (BoolFilter, ChoiceFilter, Column, CrmCreateView, CrmListView, CrmUpdateView,
@@ -22,8 +23,9 @@ from .forms import OpportunityForm, OpportunityStageForm, ProjectForm
 from .models import OWNER_FIELDS, PROJECT_OWNER_FIELDS, Opportunity, OpportunityStage, Project, weighted
 from .services import change_stage, forecast_by_month, record_creation
 
-TABS = [("List", "sales:pipeline", "list-ul"), ("Kanban", "sales:kanban", "kanban"),
-        ("Forecast", "sales:forecast", "graph-up")]
+TABS = [("Opportunity list", "sales:pipeline", "list-ul"), ("Pipeline board", "sales:kanban", "kanban"),
+        ("Forecast", "sales:forecast", "graph-up"), ("Pipeline dashboard", "dashboards:pipeline", "speedometer2"),
+        ("Opportunities dashboard", "dashboards:opportunities", "speedometer2")]
 
 
 def stage_badge(o):
@@ -40,9 +42,9 @@ def close_cell(o):
 class PipelineList(CrmListView):
     model = Opportunity
     capability = "pipeline.view"
-    title = "Sales pipeline"
-    subtitle = "Sales opportunities. An opportunity is not an order or a project under execution."
-    icon = "kanban"
+    title = "Opportunities"
+    subtitle = "Qualified sales opportunities, linked to their lead and customer. Not an order or a project."
+    icon = "lightning-charge"
     owner_fields = OWNER_FIELDS
     search_fields = ("code", "title", "customer__company_name", "location", "products_services", "competitors")
     create_url = "sales:opportunity_create"
@@ -201,6 +203,7 @@ def opportunity_detail(request, pk):
         "visits": scope_queryset(opp.visits.select_related("assigned_to"), u, owners("visits.visit"))
         if has_capability(u, "visits.view") else [],
         "activities": activity.for_object(opp, u)[:30],
+        "change_rows": change_history(opp, skip=("code", "stage_changed_at")),
         "can_edit": has_capability(u, "pipeline.edit") and not opp.is_archived,
         "can_archive": has_capability(u, "pipeline.archive"),
     })
@@ -273,6 +276,8 @@ class ProjectList(CrmListView):
     create_url = "sales:project_create"
     create_capability = "projects.edit"
     create_label = "New project"
+    view_tabs = [("List", "sales:projects", "list-ul"), ("Dashboard", "dashboards:projects", "speedometer2")]
+    current_tab = "sales:projects"
     columns = [
         Column("Project", "code", link=True), Column("Name", "name"), Column("Customer", "customer.company_name"),
         Column("Order", lambda p: p.sales_order.number if p.sales_order_id else "—"),

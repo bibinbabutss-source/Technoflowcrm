@@ -7,6 +7,7 @@
   <link rel="icon" href="{% static 'img/technoflow-logo.png' %}">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/tom-select/tom-select.bootstrap5.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/technoflow.css' %}">
   {% block head %}{% endblock %}
 </head>
@@ -71,7 +72,7 @@
   {% for section in crm_nav %}
     <div class="tf-nav-section">{{ section.title }}</div>
     {% for item in section.items %}
-      <a class="tf-nav-link {% nav_active item.url_name %}" href="{% url item.url_name %}">
+      <a class="tf-nav-link{% if item.active %} active{% endif %}" href="{{ item.url }}"{% if item.active %} aria-current="page"{% endif %}>
         <i class="bi bi-{{ item.icon }}"></i>{{ item.label }}
         {% if item.url_name == "notifications:list" and crm_unread %}<span class="tf-phase" style="color:#fff;border-color:#B42318;background:#B42318">{{ crm_unread }}</span>{% endif %}
       </a>
@@ -94,6 +95,8 @@
 
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'js/technoflow.js' %}"></script>
+<script src="{% static 'vendor/tom-select/tom-select.complete.min.js' %}"></script>
+<script src="{% static 'js/searchable-select.js' %}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,4 @@
+<details class="card mt-3" id="change-history"><summary class="card-header">Change history <span class="small text-secondary">({{ change_rows|length }} entr{{ change_rows|length|pluralize:"y,ies" }} · kept permanently)</span></summary>
+  <ul class="list-group list-group-flush small">{% for h in change_rows %}<li class="list-group-item"><div><b>{{ h.when|date:"d M Y H:i" }}</b> · {{ h.user|default:"System" }} · {{ h.action }}{% if h.message %} — {{ h.message }}{% endif %}</div>
+    {% for label, old, new in h.changes %}<div class="text-secondary">{{ label }}: {% if old %}<s>{{ old|truncatechars:80 }}</s> → {% endif %}{{ new|default:"(empty)"|truncatechars:80 }}</div>{% endfor %}</li>
+  {% empty %}<li class="list-group-item text-secondary">No changes recorded.</li>{% endfor %}</ul></details>

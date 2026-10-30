@@ -1,5 +1,9 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from django.db.models import Q
 from django.forms import inlineformset_factory
 
@@ -215,3 +219,81 @@ class DeclineForm(CrmFormMixin, forms.Form):
 
 class ReviseForm(CrmFormMixin, forms.Form):
     reason = forms.CharField(max_length=255, required=False, label="Reason for the revision")
+
+
+class UploadQuotationForm(QuotationForm):
+    """A quotation prepared in the external quotation system: the document plus the key facts."""
+
+    prefill_fields = ("customer", "opportunity", "lead")
+    file = forms.FileField(label="Quotation document",
+                           help_text="PDF recommended (Word, Excel or an image also accepted). Kept permanently.")
+    quotation_date = forms.DateField(label="Quotation date", widget=forms.DateInput(attrs={"type": "date"}))
+    expiry_date = forms.DateField(label="Valid until", required=False, widget=forms.DateInput(attrs={"type": "date"}),
+                                  help_text="Empty = quotation date + the default validity in Settings.")
+    value = forms.DecimalField(label="Quotation value", max_digits=14, decimal_places=2, min_value=Decimal("0.01"),
+                               help_text="Grand total shown on the document. A quotation value is never counted "
+                                         "as sales revenue.")
+    notes = forms.CharField(label="Notes", required=False, widget=forms.Textarea(attrs={"rows": 2}))
+    is_final = forms.BooleanField(label="This is the final quotation", required=False)
+
+    fieldsets = [
+        ("Quotation", ["file", "external_number", "quotation_date", "expiry_date", "value", "currency"]),
+        ("Linked to", ["customer", "lead", "opportunity", "salesperson"]),
+        ("Notes", ["notes", "is_final"]),
+    ]
+
+    class Meta(QuotationForm.Meta):
+        fields = ["customer", "lead", "opportunity", "salesperson", "currency", "external_number"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_related_fields(self, {
+            "lead": ("leads.Lead", "leads.view", owners("leads.lead"), Q(is_archived=False)),
+        })
+        self.fields["quotation_date"].initial = timezone.localdate()
+        self.fields["salesperson"].label = "Responsible employee"
+
+    def clean(self):
+        data = super().clean()
+        lead, customer = data.get("lead"), data.get("customer")
+        if lead and customer and lead.customer_id and lead.customer_id != customer.pk:
+            self.add_error("lead", "This lead was converted for another customer.")
+        opp = data.get("opportunity")
+        if opp and lead and opp.lead_id and opp.lead_id != lead.pk:
+            self.add_error("lead", "This lead is not the lead of the selected opportunity.")
+        if data.get("expiry_date") and data.get("quotation_date") and data["expiry_date"] < data["quotation_date"]:
+            self.add_error("expiry_date", "The validity date cannot be before the quotation date.")
+        f = data.get("file")
+        if f:
+            from .uploads import validate_quotation_file
+
+            try:
+                validate_quotation_file(f)
+            except ValidationError as exc:
+                self.add_error("file", exc.messages)
+        return data
+
+
+class UploadRevisionForm(CrmFormMixin, forms.Form):
+    file = forms.FileField(label="Revised quotation document",
+                           help_text="Stored as a new revision. Earlier revisions are kept and stay downloadable.")
+    quotation_date = forms.DateField(label="Revision date", widget=forms.DateInput(attrs={"type": "date"}))
+    expiry_date = forms.DateField(label="Valid until", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    value = forms.DecimalField(label="Quotation value", max_digits=14, decimal_places=2, min_value=Decimal("0.01"))
+    notes = forms.CharField(label="Revision notes", required=False, widget=forms.Textarea(attrs={"rows": 3}),
+                            help_text="What changed in this revision (shown in the revision history).")
+    is_final = forms.BooleanField(label="This is the final quotation", required=False)
+
+    def clean(self):
+        data = super().clean()
+        if data.get("expiry_date") and data.get("quotation_date") and data["expiry_date"] < data["quotation_date"]:
+            self.add_error("expiry_date", "The validity date cannot be before the revision date.")
+        f = data.get("file")
+        if f:
+            from .uploads import validate_quotation_file
+
+            try:
+                validate_quotation_file(f)
+            except ValidationError as exc:
+                self.add_error("file", exc.messages)
+        return data

@@ -68,14 +68,10 @@ services:
         sync: false
       - key: ADMIN_TEMP_PASSWORD
         sync: false
-      # Optional: a password for the demo.director / demo.accounts / demo.engineer /
-      # demo.coordinator logins. Leave empty for no demo users.
-      - key: DEMO_USERS_PASSWORD
+      # Set to "yes" for ONE deploy (after a database backup) to remove the fictional demo records and
+      # deactivate the demo logins; then delete it again. Demo data is never created by a deploy.
+      - key: REMOVE_DEMO_DATA
         sync: false
-      # "true" also loads fictional demo customers, quotations, orders, invoices and payments
-      # (only when DEMO_USERS_PASSWORD is set). Use "false" for real use.
-      - key: LOAD_DEMO_DATA
-        value: "true"
       # Public address used in notification e-mails, e.g. https://technoflow-crm.onrender.com
       - key: SITE_URL
         sync: false

@@ -7,11 +7,13 @@
     <span class="badge-status {% if lead.stage.is_won %}badge-active{% elif lead.stage.is_lost %}badge-danger{% else %}badge-info{% endif %} align-middle ms-1">{{ lead.stage }}</span>
     {% if lead.is_converted %}<span class="badge-status badge-active align-middle">Converted</span>{% endif %}
     {% if lead.is_archived %}<span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
-    <p>{{ lead.code }} · {{ lead.company_name }}</p></div>
+    <p>{% if lead.category %}<span class="badge-status {{ lead.category_tone|tone_class }}"><i class="bi bi-tag"></i> {{ lead.get_category_display }}</span>{% else %}<span class="badge-status badge-inactive">Category not set</span>{% endif %} · {{ lead.code }} · {{ lead.company_name }}</p></div>
   <div class="tf-actions">
-    {% if can_convert %}<a class="btn btn-primary" href="{% url 'leads:convert' lead.pk %}"><i class="bi bi-arrow-right-circle me-1"></i>Convert</a>{% endif %}
+    {% if can_convert %}<a class="btn btn-primary" href="{% url 'leads:convert' lead.pk %}"><i class="bi bi-arrow-right-circle me-1"></i>Convert to customer / opportunity</a>{% endif %}
+    {% if can_create_opportunity %}<a class="btn btn-primary" href="{% url 'sales:opportunity_create' %}?lead={{ lead.pk }}&amp;customer={{ lead.customer_id }}"><i class="bi bi-lightning me-1"></i>Create opportunity</a>{% endif %}
     {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'leads:edit' lead.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
       <a class="btn btn-outline-secondary" href="{% url 'leads:stage' lead.pk %}"><i class="bi bi-signpost me-1"></i>Change stage</a>{% endif %}
+    {% if "quotations.edit" in crm_caps and lead.customer_id and not lead.is_archived %}<a class="btn btn-outline-secondary" href="{% url 'quotations:upload' %}?lead={{ lead.pk }}&amp;customer={{ lead.customer_id }}"><i class="bi bi-cloud-arrow-up me-1"></i>Upload quotation</a>{% endif %}
     {% if "tasks.create" in crm_caps and not lead.is_archived %}<a class="btn btn-outline-secondary" href="{% url 'tasks:create' %}?lead={{ lead.pk }}{% if lead.customer_id %}&customer={{ lead.customer_id }}{% endif %}"><i class="bi bi-check2-square me-1"></i>Add task</a>{% endif %}
     {% if "communications.create" in crm_caps and lead.customer_id %}<a class="btn btn-outline-secondary" href="{% url 'communications:create' %}?customer={{ lead.customer_id }}&lead={{ lead.pk }}"><i class="bi bi-chat-left-text me-1"></i>Log communication</a>{% endif %}
     {% if can_archive %}<form method="post" action="{% url 'leads:archive' lead.pk %}" data-confirm="{% if lead.is_archived %}Restore{% else %}Archive{% endif %} this lead?">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-archive me-1"></i>{% if lead.is_archived %}Restore{% else %}Archive{% endif %}</button></form>{% endif %}
@@ -21,17 +23,19 @@
   <div class="col-lg-5">
     <div class="card mb-3"><div class="card-header">Lead details</div><div class="card-body">
       <dl class="row mb-0 small tf-dl">
-        <dt class="col-5">Interest</dt><dd class="col-7">{{ lead.interest|default:"—" }}</dd>
-        <dt class="col-5">Estimated value</dt><dd class="col-7">{{ lead.estimated_value|money:"AED" }}</dd>
+        <dt class="col-5">Category</dt><dd class="col-7">{{ lead.get_category_display|default:"Not set" }}</dd>
+        <dt class="col-5">Product interest</dt><dd class="col-7">{{ lead.interest|default:"—" }}</dd>
+        <dt class="col-5">Estimated value</dt><dd class="col-7">{% if lead.estimated_value %}{{ lead.estimated_value|money:"AED" }}{% else %}Not given{% endif %}</dd>
         <dt class="col-5">Priority</dt><dd class="col-7">{{ lead.get_priority_display }}</dd>
         <dt class="col-5">Source</dt><dd class="col-7">{{ lead.source|default:"—" }}</dd>
         <dt class="col-5">Contact</dt><dd class="col-7">{{ lead.contact_person|default:"—" }}{% if lead.designation %}, {{ lead.designation }}{% endif %}</dd>
         <dt class="col-5">Email</dt><dd class="col-7 text-break">{% if lead.email %}<a href="mailto:{{ lead.email }}">{{ lead.email }}</a>{% else %}—{% endif %}</dd>
         <dt class="col-5">Phone</dt><dd class="col-7">{% if lead.phone %}<a href="tel:{{ lead.phone }}">{{ lead.phone }}</a>{% else %}—{% endif %}</dd>
         <dt class="col-5">City</dt><dd class="col-7">{{ lead.city|default:"—" }}</dd>
-        <dt class="col-5">Sales Engineer</dt><dd class="col-7">{{ lead.assigned_engineer|person }}</dd>
+        <dt class="col-5">Responsible employee</dt><dd class="col-7">{{ lead.assigned_engineer|person }}</dd>
         <dt class="col-5">Coordinator</dt><dd class="col-7">{{ lead.assigned_coordinator|person }}</dd>
-        <dt class="col-5">Created</dt><dd class="col-7">{{ lead.created_at|date:"d-M-Y" }} by {{ lead.created_by|person }}</dd>
+        <dt class="col-5">Creator</dt><dd class="col-7">{{ lead.created_by|person }} on {{ lead.created_at|date:"d-M-Y H:i" }}</dd>
+        <dt class="col-5">Last changed</dt><dd class="col-7">{{ lead.updated_by|person }} on {{ lead.updated_at|date:"d-M-Y H:i" }}</dd>
         <dt class="col-5">Last contact</dt><dd class="col-7">{{ lead.last_contact_date|date:"d-M-Y"|default:"—" }}</dd>
         <dt class="col-5">Next follow-up</dt><dd class="col-7">{% if lead.is_follow_up_overdue %}<span class="badge-status badge-danger">{{ lead.next_follow_up|date:"d-M-Y" }} overdue</span>{% else %}{{ lead.next_follow_up|date:"d-M-Y"|default:"—" }}{% endif %}</dd>
         {% if lead.stage.is_lost %}<dt class="col-5">Lost reason</dt><dd class="col-7">{{ lead.lost_reason }}{% if lead.lost_notes %} — {{ lead.lost_notes }}{% endif %}</dd>{% endif %}
@@ -53,6 +57,7 @@
       <tbody>{% for a in assignments %}<tr><td class="text-nowrap">{{ a.assigned_at|date:"d-M-Y H:i" }}</td><td>{{ a.engineer|person }}</td><td>{{ a.coordinator|person }}</td><td>{{ a.assigned_by|person }}</td></tr>{% endfor %}</tbody></table></div>
       {% else %}<div class="tf-empty py-3">Not assigned yet.</div>{% endif %}</div>
     <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+    {% include "partials/change_history.html" %}
   </div>
 </div>
 {% endblock %}

@@ -51,6 +51,9 @@ class Opportunity(TimeStampedModel):
                                           related_name="opportunities_as_engineer")
     assigned_coordinator = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
                                              on_delete=models.PROTECT, related_name="opportunities_as_coordinator")
+    team_members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="opportunity_teams",
+                                          help_text="Other employees working on this opportunity. Revenue is "
+                                                    "still credited once, to the responsible employee.")
     source = models.ForeignKey(LookupValue, null=True, blank=True, on_delete=models.PROTECT, related_name="+",
                                limit_choices_to={"category": "lead_source"}, verbose_name="Opportunity source")
     project_type = models.ForeignKey(LookupValue, null=True, blank=True, on_delete=models.PROTECT, related_name="+",

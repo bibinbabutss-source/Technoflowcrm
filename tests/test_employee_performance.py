@@ -268,8 +268,8 @@ def test_imported_lead_counts_for_the_named_employee_on_its_real_date(org, login
 
     c = login(org["director"])
     old = TODAY.replace(day=1) - datetime.timedelta(days=5)
-    csv = (f"Lead title,Company name,Sales Engineer,Date received\nImported L,Old Co LLC,{org['e1'].username},"
-           f"{old.isoformat()}\n").encode()
+    csv = (f"Lead title,Company name,Sales Engineer,Date received,Category\nImported L,Old Co LLC,{org['e1'].username},"
+           f"{old.isoformat()},Tender\n").encode()
     c.post(reverse("reporting:import_start"), {"kind": "leads", "mode": "skip",
                                                    "file": SimpleUploadedFile("l.csv", csv, "text/csv")})
     from reporting.models import ImportBatch

@@ -1,0 +1,68 @@
+{% extends "base.html" %}{% load static crm %}
+{% block title %}Owner Dashboard{% endblock %}
+{% block content %}
+<div class="tf-page-head">
+  <div><h1><i class="bi bi-speedometer me-2"></i>Owner Dashboard</h1>
+    <p>The whole business at a glance: revenue, pipeline, approvals, employees and targets. All figures are counted from CRM records.</p></div>
+  <div class="tf-actions">
+    <a class="btn btn-primary" href="{% url 'owner:approvals' %}"><i class="bi bi-patch-check me-1"></i>Pending approvals{% if pending_count %} <span class="badge text-bg-light">{{ pending_count }}</span>{% endif %}</a>
+    <a class="btn btn-outline-primary" href="{% url 'owner:calendar' %}"><i class="bi bi-calendar3 me-1"></i>Team calendar</a>
+    <a class="btn btn-outline-secondary" href="{% url 'performance:set_targets' %}"><i class="bi bi-bullseye me-1"></i>Set targets</a></div>
+</div>
+{% if not owner_ok %}<div class="alert alert-warning">No active Owner account exists yet, so approvals still follow the previous rule (Sales Director / Administrator).</div>{% endif %}
+{% include "performance/_period.html" %}
+<div class="row g-3 mb-4">{% for c in cards %}
+  <div class="col-6 col-md-4 col-xl-3"><a href="{{ c.url }}" class="tf-kpi tf-kpi-{{ c.tone }} d-block h-100 text-decoration-none">
+    <div class="label"><i class="bi bi-{{ c.icon }}"></i>{{ c.label }}{% if c.now %} <span class="badge-status badge-inactive">now</span>{% endif %}</div>
+    <div class="value">{% if c.money %}{{ c.value|money }}{% else %}{{ c.value }}{% endif %}</div>
+    <div class="sub">{{ c.sub }}</div></a></div>{% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-xl-7"><div class="card h-100">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>Sales targets · {{ t_start|date:"d M Y" }} – {{ t_end|date:"d M Y" }}</span>
+      <span class="btn-group btn-group-sm" role="group" aria-label="Target period">
+        <a class="btn {% if tp == 'month' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% querystring tp='month' %}">Monthly</a>
+        <a class="btn {% if tp == 'quarter' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% querystring tp='quarter' %}">Quarterly</a>
+        <a class="btn {% if tp == 'year' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% querystring tp='year' %}">Yearly</a></span></div>
+    <div class="card-body">
+      <p class="small text-secondary mb-2"><b>{{ achieved }}</b> of {{ with_target }} employees with a target have achieved it. Revenue = won opportunities only; lead estimates and quotations are never counted as sales.</p>
+      <div style="height:280px"><canvas data-dash-chart="0" aria-label="Target versus won revenue per employee" role="img"></canvas></div>
+    </div></div></div>
+  <div class="col-xl-5"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>Waiting for approval</span><a class="small" href="{% url 'owner:approvals' %}">Open all</a></div>
+    <ul class="list-group list-group-flush small">{% for rev in pending %}
+      <li class="list-group-item d-flex justify-content-between gap-2"><span><a href="{{ rev.quotation.get_absolute_url }}">{{ rev.quotation.number }} {{ rev.label }}</a> · {{ rev.quotation.customer.company_name }}<br>
+        <span class="text-secondary">by {{ rev.submitted_by|person }} · {{ rev.submitted_at|date:"d M H:i" }}</span></span>
+        <b class="text-nowrap">{{ rev.grand_total|money:rev.currency }}</b></li>
+    {% empty %}<li class="list-group-item tf-empty py-4"><i class="bi bi-check2-circle"></i>Nothing is waiting for approval.</li>{% endfor %}</ul></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center"><span>Employee performance · {{ start|date:"d M Y" }}{% if start != end %} – {{ end|date:"d M Y" }}{% endif %}</span><a class="small" href="{% url 'team:list' %}?period={{ preset }}{% if preset == 'custom' %}&amp;start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% endif %}">Full comparison</a></div>
+<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0 small">
+  <thead><tr><th>Employee</th><th class="text-end">Leads created</th><th class="text-end">Leads assigned</th><th class="text-end">Handling <span class="badge-status badge-inactive">now</span></th>
+    <th class="text-end">Visits planned / done</th><th class="text-end">Opps created</th><th class="text-end">Won / lost</th><th class="text-end">Quotes uploaded / revised</th>
+    <th class="text-end">Won revenue</th><th class="text-end">Pending / overdue <span class="badge-status badge-inactive">now</span></th><th style="min-width:190px">Target ({{ tp }})</th></tr></thead>
+  <tbody>{% for r in rows %}<tr>
+    <td style="min-width:170px"><a href="{% url 'team:employee' r.user.pk %}?period={{ preset }}{% if preset == 'custom' %}&amp;start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% endif %}"><b>{{ r.user|person }}</b></a><div class="text-secondary">{{ r.profile.role.name }}</div></td>
+    <td class="text-end">{{ r.leads_created }}</td><td class="text-end">{{ r.leads_assigned }}</td><td class="text-end">{{ r.open_leads }}</td>
+    <td class="text-end">{{ r.visits_planned }} / {{ r.visits_completed }}</td><td class="text-end">{{ r.opportunities_created }}</td>
+    <td class="text-end"><span class="badge-status badge-active">✓ {{ r.deals_won }}</span> <span class="badge-status badge-danger">× {{ r.deals_lost }}</span></td>
+    <td class="text-end">{{ r.quotations_uploaded }} / {{ r.quotations_revised }}</td>
+    <td class="text-end fw-semibold">{{ r.won_value|money }}</td>
+    <td class="text-end">{{ r.pending_activities }} / {% if r.overdue_activities %}<span class="badge-status badge-danger">{{ r.overdue_activities }}</span>{% else %}0{% endif %}</td>
+    <td>{% if r.target %}<div class="tf-progress" role="progressbar" aria-valuenow="{{ r.achievement|default:0 }}" aria-valuemin="0" aria-valuemax="100" aria-label="Target achievement" title="{{ r.target_actual|money }} of {{ r.target|money }}"><span class="{% if r.achievement >= 100 %}tf-prog-green{% elif r.achievement >= 60 %}tf-prog-orange{% else %}tf-prog-red{% endif %}" style="width:{% if r.achievement > 100 %}100{% else %}{{ r.achievement|floatformat:0 }}{% endif %}%"></span></div>
+      <div class="d-flex justify-content-between"><span>{{ r.achievement }}%</span><span class="badge-status {{ r.status_tone|tone_class }}">{{ r.status_label }}</span></div>
+      {% else %}<span class="badge-status badge-inactive">No target set</span>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="11" class="tf-empty">No sales employees yet. Add them in User Management.</td></tr>{% endfor %}</tbody>
+  {% if rows %}<tfoot><tr class="fw-semibold"><td>Total</td><td class="text-end">{{ totals.leads_created }}</td><td class="text-end">{{ totals.leads_assigned }}</td><td class="text-end">{{ totals.open_leads }}</td>
+    <td class="text-end">{{ totals.visits_planned }} / {{ totals.visits_completed }}</td><td class="text-end">{{ totals.opportunities_created }}</td><td class="text-end">{{ totals.deals_won }} / {{ totals.deals_lost }}</td>
+    <td class="text-end">{{ totals.quotations_uploaded }} / {{ totals.quotations_revised }}</td><td class="text-end">{{ totals.won_value|money }}</td><td class="text-end">{{ totals.pending_activities }} / {{ totals.overdue_activities }}</td><td></td></tr></tfoot>{% endif %}
+</table></div></div>
+<p class="small text-secondary">Each lead and opportunity counts for one employee only (its responsible employee), and each quotation counts once however many revisions it has, so the total row equals the sum of the rows. "Pipeline can reach target" = won revenue plus open opportunities expected to close in the target period would meet the target.</p>
+{{ chart_list|json_script:"dash-charts" }}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/dashboards.js' %}"></script>
+{% endblock %}

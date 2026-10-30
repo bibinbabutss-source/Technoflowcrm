@@ -42,6 +42,14 @@ can continue without the original conversation.
 
 ## Test status at delivery
 
+**Update 30-Oct-2026 (Owner role, lead categories, opportunities, uploaded quotations — see
+docs/OWNER_UPDATE_REPORT.md):**
+- 232 automated tests passed on SQLite and PostgreSQL 16.
+- Crawl: 1,624 pages, 0 errors (and 0 with Finance turned off).
+- Browser checks: 66 + 62 + 77, all passed.
+- Upgrade and rollback rehearsed on PostgreSQL.
+- **Not yet deployed to Render.**
+
 **Update 28-Oct-2026 (Employee Performance, Daily Reports, Excel Import Center — see
 docs/ENHANCEMENT_REPORT.md):**
 - 201 automated tests passed on SQLite and on PostgreSQL 16.
@@ -80,7 +88,7 @@ Earlier status:
 4. **SMTP email:** fill in `EMAIL_HOST`, `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`, then test a
    password reset.
 5. **Before real use:**
-   - set `LOAD_DEMO_DATA` to `false`
+   - remove the demo data with `REMOVE_DEMO_DATA=yes` for one deploy (after a backup)
    - deactivate the demo users
    - fill in Settings → Company (TRN, address)
    - turn on two-step sign-in

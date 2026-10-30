@@ -29,6 +29,8 @@ urlpatterns = [
     path("team/", include("performance.team_urls")),
     path("daily-reports/", include("performance.report_urls")),
     path("documents/", include("documents.urls")),
+    path("owner/", include("owner.urls")),
+    path("dashboards/", include("reporting.dashboard_urls")),
     path("notifications/", include("notifications.urls")),
     path("", include("reporting.urls")),
     path("", include("core.urls")),

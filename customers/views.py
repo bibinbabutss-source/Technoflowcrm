@@ -44,6 +44,8 @@ class CustomerList(CrmListView):
     create_url = "customers:create"
     create_capability = "customers.create"
     create_label = "Add customer"
+    view_tabs = [("List", "customers:list", "list-ul"), ("Dashboard", "dashboards:customers", "speedometer2")]
+    current_tab = "customers:list"
     columns = [
         Column("Customer ID", "code", link=True),
         Column("Company", "company_name"),

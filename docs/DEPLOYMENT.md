@@ -142,14 +142,13 @@ Your code is now on GitHub. Nothing is running yet.
 | `ADMIN_FIRST_NAME` | First name | `Mohamed` |
 | `ADMIN_LAST_NAME` | Last name | `Aniq` |
 | `ADMIN_TEMP_PASSWORD` | A temporary password: **10+ characters, not a common password, not only digits**. You change it at first sign-in | (your choice) |
-| `DEMO_USERS_PASSWORD` | Optional. If filled, four demo logins are created with this password (see C4). Leave empty for none | (your choice) |
+| `REMOVE_DEMO_DATA` | Leave empty. Set to `yes` for one deploy only, after a backup, to remove the fictional demo records (see "Starting fresh") | (empty) |
 | `SITE_URL` | Optional. The CRM's address, used for links in notification e-mails. Empty = the onrender.com address | `https://technoflow-crm.onrender.com` |
 | `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Optional. Your SMTP server, to send password-reset and notification e-mails. Empty = no e-mails (in-app notifications still work) | `smtp.office365.com` |
 
-`LOAD_DEMO_DATA` is set to `true` in `render.yaml`: with `DEMO_USERS_PASSWORD` filled, the first deploy also loads
-fictional demo customers, leads, quotations, orders, invoices and payments so every screen has something to
-show. It runs only once. **For real use, change it to `false` in `render.yaml` before the first deploy**, or
-delete the demo records afterwards.
+A deploy never creates demo data (changed Oct 2026). Every deploy prints a preview of any fictional demo
+records it finds ("Demo data check"), without changing anything. The demo commands (`load_demo_users`,
+`load_demo_data`) are only for a laptop or a separate demo server.
 
    Do not reuse a password you use anywhere else.
 
@@ -187,8 +186,8 @@ When the status shows **Live**, click the address at the top of the page
 4. Optional, recommended: in Render → web service → **Environment**, delete `ADMIN_TEMP_PASSWORD`.
    It is only used once.
 
-If you set `DEMO_USERS_PASSWORD`, these logins exist, all with that password, without a forced password change
-so several people can use them during the demo:
+On a laptop or demo server where you ran `load_demo_users`, these demo logins exist (deploys to Render no
+longer create them):
 
 | Username | Role |
 | --- | --- |
@@ -225,6 +224,23 @@ visitors, and the first visit after that takes about a minute while it starts ag
 
 ---
 
+## Starting fresh: removing the demo data
+
+The free plan has no command console, so the removal runs during a deploy:
+
+1. **Back up the database first** (Render → technoflow-crm-db → Recovery / Backups).
+2. Render → **technoflow-crm** → **Environment**:
+   - delete `LOAD_DEMO_DATA` and `DEMO_USERS_PASSWORD` if they are still there (they are no longer used);
+   - add `REMOVE_DEMO_DATA` = `yes`.
+
+   Then click **Save, rebuild, and deploy**.
+3. In the deploy log, the line "Removing demo data" lists what was removed.
+4. Remove `REMOVE_DEMO_DATA` again and save. Later deploys only show the "Demo data check" preview.
+
+Only the fictional "Demo:" customers and leads, everything linked to them, and the demo logins' targets,
+reports and notifications are removed. The demo logins are deactivated, and your real records and users are
+kept. Numbering (QT-, INV-, SO- …) restarts at 0001 where no records are left.
+
 ## Updating the online CRM later
 
 1. Change and test on your laptop (Stage A).
@@ -249,7 +265,7 @@ Set by `render.yaml` automatically (nothing to type):
 | `PORT` | set by Render itself | The port Gunicorn listens on |
 
 Typed by you in Render: `ADMIN_URL`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME`,
-`ADMIN_TEMP_PASSWORD`, and optionally `DEMO_USERS_PASSWORD` (table in C2).
+`ADMIN_TEMP_PASSWORD`, and, for one deploy only, `REMOVE_DEMO_DATA` (table in C2).
 
 Optional, add in Render → Environment only if needed: `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` (only for your
 own domain, e.g. `crm.company.com` and `https://crm.company.com`), `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`,

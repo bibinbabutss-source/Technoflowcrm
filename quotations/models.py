@@ -16,8 +16,18 @@ OWNER_FIELDS = owners("quotations.quotation")
 class Quotation(TimeStampedModel):
     """The quotation 'folder': one number, many revisions. The current revision is what counts."""
 
+    class Source(models.TextChoices):
+        BUILT = "built", "Prepared in the CRM"
+        UPLOADED = "uploaded", "Uploaded document"
+
     number = models.CharField("Quotation number", max_length=30, unique=True, editable=False)
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.BUILT, db_index=True,
+                              db_default="built")
+    external_number = models.CharField("Quotation number in the quotation system", max_length=60, blank=True,
+                                       db_index=True, db_default="", help_text="The number printed on the uploaded document.")
     customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="quotations")
+    lead = models.ForeignKey("leads.Lead", null=True, blank=True, on_delete=models.PROTECT,
+                             related_name="quotations", verbose_name="Related lead")
     opportunity = models.ForeignKey("sales.Opportunity", null=True, blank=True, on_delete=models.PROTECT,
                                     related_name="quotations", verbose_name="Related opportunity")
     salesperson = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
@@ -60,7 +70,14 @@ class Quotation(TimeStampedModel):
 
     @property
     def display_number(self):
+        if self.is_uploaded:
+            cur = self.current
+            return f"{self.number} {cur.label}" if cur else self.number
         return f"{self.number} Rev {self.current_version}"
+
+    @property
+    def is_uploaded(self):
+        return self.source == self.Source.UPLOADED
 
 
 class QuotationRevision(TimeStampedModel):
@@ -116,6 +133,8 @@ class QuotationRevision(TimeStampedModel):
     customer_reference = models.CharField("Customer PO / reference", max_length=100, blank=True)
     decline_reason = models.CharField(max_length=255, blank=True)
     revision_reason = models.CharField(max_length=255, blank=True)
+    revision_notes = models.TextField("Revision notes", blank=True, db_default="")
+    is_final = models.BooleanField("Final quotation", default=False, db_default=False)
 
     # ---- quotation document (cover letter, price schedule) — editable while the revision is a draft.
     # Empty values fall back to the customer / opportunity / company quotation template when printing.
@@ -151,10 +170,21 @@ class QuotationRevision(TimeStampedModel):
         constraints = [models.UniqueConstraint(fields=["quotation", "version"], name="uniq_quotation_version")]
 
     def __str__(self):
-        return f"{self.quotation.number} Rev {self.version}"
+        return f"{self.quotation.number} {self.label}"
 
     def get_absolute_url(self):
         return reverse("quotations:detail", args=[self.quotation_id]) + f"?rev={self.version}"
+
+    @property
+    def revision_code(self):
+        """Uploaded quotations: Original, R1, R2 …; quotations prepared in the CRM keep "Rev 1, Rev 2 …"."""
+        if self.quotation.source != Quotation.Source.UPLOADED:
+            return f"Rev {self.version}"
+        return "Original" if self.version == 1 else f"R{self.version - 1}"
+
+    @property
+    def label(self):
+        return f"Final ({self.revision_code})" if self.is_final else self.revision_code
 
     def save(self, *args, **kwargs):
         if self.pk and not self._state.adding:
@@ -319,3 +349,34 @@ class Approval(models.Model):
 
     class Meta:
         ordering = ["-decided_at"]
+
+
+class QuotationFile(models.Model):
+    """
+    The uploaded quotation document of one revision, prepared in the external quotation system.
+    Stored in the database (not on disk) so it survives redeploys on hosts without a persistent disk, and is
+    included in every database backup. Never overwritten: a changed quotation is uploaded as a new revision.
+    """
+
+    revision = models.OneToOneField(QuotationRevision, on_delete=models.PROTECT, related_name="document")
+    original_name = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=100)
+    size = models.PositiveIntegerField()
+    sha256 = models.CharField(max_length=64, db_index=True)
+    data = models.BinaryField()
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name="+")
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return self.original_name
+
+    def save(self, *args, **kwargs):
+        if self.pk and not self._state.adding:
+            raise ValidationError("An uploaded quotation file cannot be replaced. Upload a new revision instead.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Uploaded quotation files are kept permanently.")

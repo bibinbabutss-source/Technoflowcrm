@@ -45,6 +45,13 @@ class LeadStage(TimeStampedModel):
 
 
 class Lead(TimeStampedModel):
+    class Category(models.TextChoices):
+        JOB_IN_HAND = "job_in_hand", "Job in Hand"
+        TENDER = "tender", "Tender"
+        PURCHASE_ENQUIRY = "purchase_enquiry", "Purchase Enquiry"
+
+    CATEGORY_TONE = {"job_in_hand": "good", "tender": "info", "purchase_enquiry": "warn"}
+
     class Priority(models.TextChoices):
         LOW = "low", "Low"
         MEDIUM = "medium", "Medium"
@@ -52,6 +59,9 @@ class Lead(TimeStampedModel):
 
     code = models.CharField("Lead ID", max_length=20, unique=True, editable=False)
     title = models.CharField("Lead title", max_length=200)
+    category = models.CharField("Lead category", max_length=20, choices=Category.choices, blank=True, db_index=True,
+                                db_default="",
+                                help_text="Job in Hand, Tender or Purchase Enquiry (required for new leads).")
     company_name = models.CharField(max_length=200)
     contact_person = models.CharField(max_length=150, blank=True)
     designation = models.CharField(max_length=100, blank=True)
@@ -60,9 +70,10 @@ class Lead(TimeStampedModel):
     city = models.CharField("Emirate / city", max_length=100, blank=True)
     source = models.ForeignKey(LookupValue, null=True, blank=True, on_delete=models.PROTECT, related_name="+",
                                limit_choices_to={"category": "lead_source"}, verbose_name="Lead source")
-    interest = models.CharField("Service / product interest", max_length=255, blank=True)
-    estimated_value = models.DecimalField("Estimated opportunity value", max_digits=14, decimal_places=2,
-                                          default=0, validators=[MinValueValidator(0)])
+    interest = models.CharField("Product interest", max_length=255, blank=True)
+    estimated_value = models.DecimalField("Estimated value", max_digits=14, decimal_places=2, blank=True,
+                                          default=0, validators=[MinValueValidator(0)],
+                                          help_text="Optional. An estimate only: never counted as sales.")
     priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
     assigned_engineer = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
                                           related_name="leads_as_engineer")
@@ -91,6 +102,10 @@ class Lead(TimeStampedModel):
 
     def get_absolute_url(self):
         return reverse("leads:detail", args=[self.pk])
+
+    @property
+    def category_tone(self):
+        return self.CATEGORY_TONE.get(self.category, "neutral")
 
     def save(self, *args, **kwargs):
         if not self.code:

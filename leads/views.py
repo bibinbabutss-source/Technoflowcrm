@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -11,6 +11,7 @@ from accounts.permissions import capability_required, has_capability, scope_quer
 from core import activity
 from core.crud import (BoolFilter, ChoiceFilter, Column, CrmCreateView, CrmListView, CrmUpdateView,
                        DateRangeFilter, ModelFilter, UserFilter, badge, get_scoped_or_404, money)
+from core.audit import change_history
 from core.models import LookupValue
 from core.params import get_int
 from customers.services import find_duplicates
@@ -21,12 +22,17 @@ from .services import change_stage, convert, record_assignment
 
 PRIORITY_TONE = {"high": "bad", "medium": "warn", "low": "neutral"}
 
-VIEW_TABS = [("List", "leads:list", "list-ul"), ("Kanban", "leads:kanban", "kanban")]
+VIEW_TABS = [("List", "leads:list", "list-ul"), ("Kanban", "leads:kanban", "kanban"),
+             ("Dashboard", "dashboards:leads", "speedometer2")]
 
 
 def stage_badge(lead):
     tone = "good" if lead.stage.is_won else "bad" if lead.stage.is_lost else "info"
     return badge(lead.stage.name, tone)
+
+
+def category_cell(lead):
+    return badge(lead.get_category_display(), lead.category_tone) if lead.category else badge("Not set", "neutral")
 
 
 def follow_up_cell(lead):
@@ -52,6 +58,7 @@ class LeadList(CrmListView):
     current_tab = "leads:list"
     columns = [
         Column("Lead ID", "code", link=True),
+        Column("Category", render=category_cell, text=lambda lead: lead.get_category_display()),
         Column("Title", "title"),
         Column("Company", "company_name"),
         Column("Source", "source"),
@@ -59,7 +66,8 @@ class LeadList(CrmListView):
         Column("Priority", render=lambda lead: badge(lead.get_priority_display(), PRIORITY_TONE[lead.priority]),
                text=lambda lead: lead.get_priority_display()),
         Column("Est. value", "estimated_value", money=True),
-        Column("Sales Engineer", "assigned_engineer"),
+        Column("Responsible", "assigned_engineer"),
+        Column("Created by", "created_by"),
         Column("Next follow-up", render=follow_up_cell, text=lambda lead: lead.next_follow_up),
         Column("Created", "created_at", date=True),
     ]
@@ -72,12 +80,13 @@ class LeadList(CrmListView):
     default_sort = "newest"
 
     def base_queryset(self):
-        return Lead.objects.select_related("stage", "source", "assigned_engineer")
+        return Lead.objects.select_related("stage", "source", "assigned_engineer", "created_by")
 
     def get_filters(self):
         today = timezone.localdate()
         return [
-            ModelFilter("stage", "Stage", LeadStage.objects.all()),
+            ChoiceFilter("category", "Category", Lead.Category.choices),
+            ModelFilter("stage", "Status / stage", LeadStage.objects.all()),
             ChoiceFilter("state", "Open / closed", [("open", "Open"), ("won", "Won"), ("lost", "Lost")],
                          lookups={"open": Q(stage__is_won=False, stage__is_lost=False),
                                   "won": Q(stage__is_won=True), "lost": Q(stage__is_lost=True)}),
@@ -93,7 +102,10 @@ class LeadList(CrmListView):
 
     def summary(self, qs):
         open_qs = qs.filter(stage__is_won=False, stage__is_lost=False)
+        cats = dict(qs.values_list("category").annotate(n=Count("pk")))
         return [("Leads", qs.count()), ("Open", open_qs.count()),
+                ("Job in Hand", cats.get("job_in_hand", 0)), ("Tender", cats.get("tender", 0)),
+                ("Purchase Enquiry", cats.get("purchase_enquiry", 0)),
                 ("Open value (AED)", money(open_qs.aggregate(v=Sum("estimated_value"))["v"] or 0)),
                 ("Won", qs.filter(stage__is_won=True).count())]
 
@@ -153,11 +165,16 @@ class LeadUpdate(CrmUpdateView):
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
         self._prev = (obj.assigned_engineer, obj.assigned_coordinator)
+        self._prev_category = obj.category
         return obj
 
     def form_valid(self, form):
         response = super().form_valid(form)
         record_assignment(self.object, previous_engineer=self._prev[0], previous_coordinator=self._prev[1])
+        if self._prev_category != self.object.category:
+            old = dict(Lead.Category.choices).get(self._prev_category, "not set")
+            activity.record(self.object, "updated",
+                            f"Category changed from {old} to {self.object.get_category_display()}")
         return response
 
 
@@ -177,7 +194,11 @@ def lead_detail(request, pk):
         "can_convert": has_capability(request.user, "leads.convert") and not lead.is_converted
         and not lead.stage.is_lost and not lead.is_archived,
         "can_archive": has_capability(request.user, "leads.archive"),
+        "can_create_opportunity": has_capability(request.user, "pipeline.edit") and lead.is_converted
+        and not lead.is_archived and not lead.stage.is_lost
+        and not lead.opportunities.filter(is_archived=False).exists(),
         "stage_form": StageForm(initial={"stage": lead.stage}, user=request.user),
+        "change_rows": change_history(lead, skip=("code",)),
     })
 
 

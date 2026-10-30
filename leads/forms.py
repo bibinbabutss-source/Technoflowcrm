@@ -2,6 +2,7 @@ from django import forms
 
 from accounts.permissions import has_capability, scope_queryset
 from core.crud import CrmFormMixin, restrict_lookups
+from core.forms import PillRadioSelect
 from core.models import LookupValue
 from customers.forms import setup_assignment
 from customers.models import OWNER_FIELDS as CUSTOMER_OWNERS
@@ -17,7 +18,7 @@ class LeadForm(CrmFormMixin, forms.ModelForm):
         help_text="Tick only after checking the similar open leads listed above.")
 
     fieldsets = [
-        ("Lead", ["title", "interest", "estimated_value", "priority", "source"]),
+        ("Lead", ["category", "title", "interest", "estimated_value", "priority", "source"]),
         ("Company and contact", ["company_name", "contact_person", "designation", "email", "phone", "city"]),
         ("Assignment and follow-up", ["assigned_engineer", "assigned_coordinator", "last_contact_date",
                                       "next_follow_up", "qualification_notes"]),
@@ -26,23 +27,44 @@ class LeadForm(CrmFormMixin, forms.ModelForm):
 
     class Meta:
         model = Lead
-        fields = ["title", "interest", "estimated_value", "priority", "source", "company_name", "contact_person",
+        fields = ["category", "title", "interest", "estimated_value", "priority", "source", "company_name", "contact_person",
                   "designation", "email", "phone", "city", "assigned_engineer", "assigned_coordinator",
                   "last_contact_date", "next_follow_up", "qualification_notes"]
+
+        widgets = {"category": PillRadioSelect(attrs={"class": "tf-category-choice"})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.duplicates = []
         restrict_lookups(self, {"source": "lead_source"})
         setup_assignment(self, capability="leads.assign")
+        cat = self.fields["category"]
+        cat.required = True
+        cat.choices = Lead.Category.choices  # no empty option: one of the three must be chosen
+        cat.error_messages["required"] = "Choose the lead category: Job in Hand, Tender or Purchase Enquiry."
+        if self.instance.pk and not has_capability(self.user, "leads.edit"):
+            cat.disabled = True
+        self.fields["estimated_value"].required = False
+        if "assigned_engineer" in self.fields:
+            self.fields["assigned_engineer"].label = "Responsible employee (owner)"
+            if self.fields["assigned_engineer"].required is False and has_capability(self.user, "leads.assign"):
+                self.fields["assigned_engineer"].required = True
+
+    def clean_estimated_value(self):
+        value = self.cleaned_data.get("estimated_value")
+        return value if value is not None else 0
 
     def clean(self):
         data = super().clean()
         if self.errors:
             return data
-        if not data.get("assigned_engineer") and not self.instance.pk and self.user is not None and not \
+        if not data.get("assigned_engineer") and self.user is not None and not \
                 has_capability(self.user, "leads.assign"):
-            self.instance.assigned_engineer = self.user
+            # every lead has a responsible employee: someone who may not assign others owns what they register
+            if self.instance.pk and self.instance.assigned_engineer_id:
+                data["assigned_engineer"] = self.instance.assigned_engineer
+            else:
+                data["assigned_engineer"] = self.user
         if not self.instance.pk or {"company_name", "email", "phone"} & set(self.changed_data):
             self.duplicates = find_lead_duplicates(company_name=data.get("company_name"), email=data.get("email"),
                                                    phone=data.get("phone"), exclude_pk=self.instance.pk)

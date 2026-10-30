@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Pending Approvals{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1><i class="bi bi-patch-check me-2"></i>Pending Approvals</h1>
+  <p>Every request waiting for a decision, oldest first. Open the details and the document before deciding. The employee is notified of every decision.</p></div></div>
+{% if not owner_ok %}<div class="alert alert-warning">No active Owner account exists yet: until one is created, the Sales Director and System Administrator can still approve (previous rule).</div>
+{% elif not can_decide %}<div class="alert alert-info"><i class="bi bi-info-circle me-1"></i>{{ why }}</div>{% endif %}
+{% if backup and owner_ok %}<div class="alert alert-secondary small py-2">The Sales Director may currently approve as backup (Modules &amp; Approvals).</div>{% endif %}
+{% for it in items %}
+<div class="card mb-3 tf-approval"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between gap-2">
+    <div><h2 class="h5 mb-1"><a href="{{ it.q.get_absolute_url }}">{{ it.q.number }} · {{ it.rev.label }}</a>
+      <span class="badge-status badge-warning ms-1"><i class="bi bi-hourglass-split"></i> Awaiting approval</span>
+      {% if it.q.is_uploaded %}<span class="badge-status badge-info">Uploaded document</span>{% endif %}</h2>
+      <div class="small text-secondary">Quotation · {{ it.q.customer.company_name }}{% if it.q.opportunity %} · <a href="{{ it.q.opportunity.get_absolute_url }}">{{ it.q.opportunity.code }}</a>{% endif %}</div></div>
+    <div class="text-end"><div class="fs-5 fw-semibold">{{ it.rev.grand_total|money:it.rev.currency }}</div>
+      <div class="small text-secondary">submitted {{ it.rev.submitted_at|date:"d M Y H:i" }} by {{ it.rev.submitted_by|person }}{% if it.waiting %} · waiting {{ it.waiting.days }} day{{ it.waiting.days|pluralize }}{% endif %}</div></div>
+  </div>
+  <dl class="row small mt-2 mb-2 tf-dl">
+    <dt class="col-sm-3">Why approval is needed</dt><dd class="col-sm-9">{{ it.rev.approval_reason|default:"—" }}</dd>
+    <dt class="col-sm-3">Salesperson</dt><dd class="col-sm-9">{{ it.q.salesperson|person }}</dd>
+    {% if it.rev.revision_notes %}<dt class="col-sm-3">Revision notes</dt><dd class="col-sm-9">{{ it.rev.revision_notes|linebreaksbr }}</dd>{% endif %}
+    <dt class="col-sm-3">Supporting document</dt><dd class="col-sm-9">{% if it.doc %}<a href="{{ it.doc }}"><i class="bi bi-download me-1"></i>Download {{ it.rev.label }}</a>{% else %}—{% endif %}</dd>
+  </dl>
+  {% if can_decide and not it.own %}
+  <form method="post" action="{% url 'quotations:decide' it.q.pk %}" class="row g-2 align-items-start" data-no-spinner>{% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <div class="col-md-7"><label class="visually-hidden" for="c-{{ it.rev.pk }}">Comments</label>
+      <textarea class="form-control form-control-sm" id="c-{{ it.rev.pk }}" name="comments" rows="2" placeholder="Comments (required when rejecting)"></textarea></div>
+    <div class="col-md-5 d-flex gap-2 flex-wrap">
+      <button class="btn btn-success" type="submit" name="decision" value="approve"><i class="bi bi-check2 me-1"></i>Approve</button>
+      <button class="btn btn-outline-danger" type="submit" name="decision" value="reject"><i class="bi bi-x-lg me-1"></i>Reject</button>
+      <a class="btn btn-outline-secondary" href="{{ it.q.get_absolute_url }}">Details</a></div>
+  </form>
+  {% elif it.own %}<div class="small text-secondary">You prepared this quotation or are its salesperson, so someone else must decide.</div>{% endif %}
+</div></div>
+{% empty %}<div class="card"><div class="card-body tf-empty"><i class="bi bi-check2-circle"></i>Nothing is waiting for approval.</div></div>{% endfor %}
+
+<div class="card mt-4"><div class="card-header">Recent decisions</div>
+<div class="table-responsive"><table class="table table-sm mb-0 small"><thead><tr><th>When</th><th>Quotation</th><th>Decision</th><th>By</th><th>Comments</th><th class="text-end">Value</th></tr></thead>
+<tbody>{% for a in recent %}<tr><td class="text-nowrap">{{ a.decided_at|date:"d M Y H:i" }}</td>
+  <td><a href="{{ a.revision.quotation.get_absolute_url }}">{{ a.revision.quotation.number }} {{ a.revision.label }}</a> · {{ a.revision.quotation.customer.company_name }}</td>
+  <td>{% if a.decision == "approved" %}<span class="badge-status badge-active"><i class="bi bi-check2"></i> Approved</span>{% else %}<span class="badge-status badge-danger"><i class="bi bi-x"></i> Rejected</span>{% endif %}</td>
+  <td>{{ a.decided_by|person }}</td><td>{{ a.comments|default:"—" }}</td><td class="text-end">{{ a.grand_total|money }}</td></tr>
+{% empty %}<tr><td colspan="6" class="text-secondary">No decisions yet.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

@@ -13,6 +13,7 @@ button described here is missing, your role does not have that permission — as
 6. [Reports, exports and import](#6-reports-exports-and-import)
 7. [Good habits](#7-good-habits)
 8. [Employee Performance and Daily Reports](#8-employee-performance-and-daily-reports)
+9. [Lead categories, uploaded quotations and the Owner pages](#9-lead-categories-uploaded-quotations-and-the-owner-pages)
 
 ---
 
@@ -211,3 +212,34 @@ Click any card, bar or point to open the records behind the number.
 - Reports are **self-reported**. Each report page shows them next to the figures the CRM recorded that
   day, so the two can be compared.
 - Managers see a summary for the week or month, showing reports submitted and working days missing.
+
+## 9. Lead categories, uploaded quotations and the Owner pages
+
+**Leads:**
+- Every new lead needs a **category**: click **Job in Hand**, **Tender** or **Purchase Enquiry** at the top
+  of the form.
+- Estimated value is optional.
+- The lead page shows who created the lead and who is responsible. **Change history** lists every change.
+- Filter the Leads list by category, status, source, employee and dates. The **Dashboard** tab shows the same
+  as charts.
+
+**Opportunities:**
+- The **Opportunities** menu lists every opportunity; the **Sales Pipeline** menu shows the board and forecast.
+- On a converted lead, click **Create opportunity**: the details are copied from the lead.
+- A lead can have only one active opportunity.
+
+**Quotations:**
+1. Prepare the quotation in your quotation system.
+2. In the CRM, click **Upload quotation**: choose the file and enter its number, date, value and customer
+   (and lead / opportunity).
+3. For a change, open the quotation and click **Upload revision**. It becomes R1, R2 …, and older revisions
+   stay downloadable in **Revision history**.
+4. Click **Mark as final** on the agreed version.
+5. **Submit for approval** sends it to the Owner's Pending Approvals.
+
+**Owner:**
+- **Owner Dashboard** shows the whole business, with targets per month, quarter or year.
+- **Pending Approvals** has Approve / Reject with comments.
+- **Team Calendar** shows everyone's visits, meetings, follow-ups, tasks and deadlines.
+- **Modules & Approvals** turns Finance on or off and lets the Sales Director approve as backup.
+

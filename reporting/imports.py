@@ -451,7 +451,8 @@ class CustomerHandler:
 
 class LeadHandler:
     names = ["title", "company_name", "contact_person", "designation", "email", "phone", "city", "source",
-             "interest", "estimated_value", "priority", "assigned_engineer", "next_follow_up", "qualification_notes"]
+             "interest", "estimated_value", "priority", "assigned_engineer", "next_follow_up", "qualification_notes",
+             "category"]
 
     @staticmethod
     def model():

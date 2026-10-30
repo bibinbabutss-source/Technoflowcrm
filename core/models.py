@@ -126,7 +126,7 @@ class CompanyProfile(TimeStampedModel):
     approval_threshold = models.DecimalField(
         "Approval needed from grand total of", max_digits=14, decimal_places=2, default=0,
         validators=[MinValueValidator(0)],
-        help_text="Quotations with a grand total at or above this amount need Sales Director approval. "
+        help_text="Quotations with a grand total at or above this amount need the Owner's approval. "
                   "0 = every quotation needs approval.")
     discount_approval_limit = models.DecimalField(
         "Approval needed above discount (%)", max_digits=5, decimal_places=2, default=10,
@@ -134,6 +134,16 @@ class CompanyProfile(TimeStampedModel):
         help_text="Any line discount above this percentage always needs approval, whatever the total.")
     quotation_expiry_warning_days = models.PositiveSmallIntegerField(
         "Warn before quotation expiry (days)", default=7)
+    director_backup_approval = models.BooleanField(
+        "Sales Director may approve as backup", default=False, db_default=False,
+        help_text="Approvals go to the Owner. Tick to let the Sales Director approve too, e.g. while the Owner is "
+                  "away. While no active Owner account exists, the Sales Director can always approve.")
+
+    # ---- modules
+    finance_enabled = models.BooleanField(
+        "Show the Finance module", default=True, db_default=True,
+        help_text="Sales Orders, Invoices and Collections. Turning it off hides and blocks those pages for "
+                  "everyone; no records are deleted, and turning it on again restores everything.")
 
     # ---- reminders and notifications
     email_notifications_enabled = models.BooleanField(

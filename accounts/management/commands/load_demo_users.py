@@ -28,6 +28,7 @@ DEMO = [
     (caps.ACCOUNTS, "demo.accounts", "Avery", "Accounts", "DEMO-003", "Accounts"),
     (caps.ENGINEER, "demo.engineer", "Elliot", "Engineer", "DEMO-004", "Sales"),
     (caps.COORDINATOR, "demo.coordinator", "Casey", "Coordinator", "DEMO-005", "Sales"),
+    (caps.OWNER, "demo.owner", "Olivia", "Owner", "DEMO-006", "Management"),
 ]
 
 

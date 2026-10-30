@@ -6,7 +6,8 @@
   <div><h1>{{ opp.title }} <span class="badge-status {% if opp.stage.is_won %}badge-active{% elif opp.stage.is_lost %}badge-danger{% else %}badge-info{% endif %} align-middle">{{ opp.stage }}</span>{% if opp.is_archived %} <span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
     <p>{{ opp.code }} · <a href="{{ opp.customer.get_absolute_url }}">{{ opp.customer.company_name }}</a></p></div>
   <div class="tf-actions">
-    {% if "quotations.edit" in crm_caps and opp.is_open and not opp.is_archived %}<a class="btn btn-primary" href="{% url 'quotations:create' %}?opportunity={{ opp.pk }}&customer={{ opp.customer_id }}"><i class="bi bi-file-earmark-plus me-1"></i>Create quotation</a>{% endif %}
+    {% if "quotations.edit" in crm_caps and opp.is_open and not opp.is_archived %}<a class="btn btn-primary" href="{% url 'quotations:upload' %}?opportunity={{ opp.pk }}&amp;customer={{ opp.customer_id }}{% if opp.lead_id %}&amp;lead={{ opp.lead_id }}{% endif %}"><i class="bi bi-cloud-arrow-up me-1"></i>Upload quotation</a>
+    <a class="btn btn-outline-secondary" href="{% url 'quotations:create' %}?opportunity={{ opp.pk }}&amp;customer={{ opp.customer_id }}"><i class="bi bi-file-earmark-plus me-1"></i>Prepare in CRM</a>{% endif %}
     {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'sales:opportunity_edit' opp.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
       <a class="btn btn-outline-secondary" href="{% url 'sales:opportunity_stage' opp.pk %}"><i class="bi bi-signpost me-1"></i>Change stage</a>{% endif %}
     {% if "visits.create" in crm_caps and opp.is_open %}<a class="btn btn-outline-secondary" href="{% url 'visits:create' %}?customer={{ opp.customer_id }}&opportunity={{ opp.pk }}"><i class="bi bi-calendar-plus me-1"></i>Visit</a>{% endif %}
@@ -27,8 +28,11 @@
       <dt class="col-5">Project type</dt><dd class="col-7">{{ opp.project_type|default:"—" }}</dd>
       <dt class="col-5">Location</dt><dd class="col-7">{{ opp.location|default:"—" }}</dd>
       <dt class="col-5">Related lead</dt><dd class="col-7">{% if opp.lead %}<a href="{{ opp.lead.get_absolute_url }}">{{ opp.lead }}</a>{% else %}—{% endif %}</dd>
-      <dt class="col-5">Sales Engineer</dt><dd class="col-7">{{ opp.assigned_engineer|person }}</dd>
+      <dt class="col-5">Responsible employee</dt><dd class="col-7">{{ opp.assigned_engineer|person }}</dd>
       <dt class="col-5">Coordinator</dt><dd class="col-7">{{ opp.assigned_coordinator|person }}</dd>
+      <dt class="col-5">Team members</dt><dd class="col-7">{% for m in opp.team_members.all %}{{ m|person }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+      {% if opp.lead %}<dt class="col-5">Lead category</dt><dd class="col-7">{{ opp.lead.get_category_display|default:"—" }}</dd>{% endif %}
+      <dt class="col-5">Creator</dt><dd class="col-7">{{ opp.created_by|person }} on {{ opp.created_at|date:"d-M-Y" }}</dd>
       <dt class="col-5">Competitors</dt><dd class="col-7">{{ opp.competitors|default:"—" }}</dd>
       <dt class="col-5">Next action</dt><dd class="col-7">{{ opp.next_action|default:"—" }}</dd>
       <dt class="col-5">Next follow-up</dt><dd class="col-7">{% if opp.is_follow_up_overdue %}<span class="badge-status badge-danger">{{ opp.next_follow_up|date:"d-M-Y" }} overdue</span>{% else %}{{ opp.next_follow_up|date:"d-M-Y"|default:"—" }}{% endif %}</dd>
@@ -50,6 +54,7 @@
       <div class="table-responsive"><table class="table table-sm"><thead><tr><th>When</th><th>From</th><th>To</th><th class="text-end">Prob.</th><th class="text-end">Value</th><th>By</th></tr></thead>
       <tbody>{% for h in history %}<tr><td class="text-nowrap">{{ h.changed_at|date:"d-M-Y H:i" }}</td><td>{{ h.from_stage|default:"—" }}</td><td>{{ h.to_stage }}</td><td class="text-end">{{ h.probability }}%</td><td class="text-end">{{ h.estimated_value|money }}</td><td>{{ h.changed_by|person }}</td></tr>{% endfor %}</tbody></table></div></div>
     <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+    {% include "partials/change_history.html" %}
   </div>
 </div>
 {% endblock %}

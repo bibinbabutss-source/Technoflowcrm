@@ -102,6 +102,26 @@ def lookups(request):
     })
 
 
+@capability_required("settings.manage")
+def lookup_edit(request, pk):
+    """Rename or re-order a drop-down value. Records keep pointing at it, so the new name shows everywhere."""
+    obj = get_object_or_404(LookupValue, pk=pk)
+    category = obj.category  # the list a value belongs to never changes
+    data = request.POST.copy() if request.method == "POST" else None
+    if data is not None:
+        data["category"] = category
+    form = LookupValueForm(data, instance=obj)
+    if request.method == "POST" and form.is_valid():
+        if LookupValue.objects.filter(category=category, value__iexact=form.cleaned_data["value"]).exclude(
+                pk=obj.pk).exists():
+            form.add_error("value", "This value already exists in the list.")
+        else:
+            form.save()
+            messages.success(request, f"Saved '{form.instance.value}'.")
+            return redirect(f"{reverse('core:lookups')}?category={category}")
+    return render(request, "core/settings_lookup_edit.html", {"form": form, "obj": obj, "tab": "lookups"})
+
+
 @require_POST
 @capability_required("settings.manage")
 def lookup_toggle(request, pk):

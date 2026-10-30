@@ -1,0 +1,2 @@
+{% extends "crud/list.html" %}
+{% block head_actions %}{% if "quotations.edit" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'quotations:create' %}"><i class="bi bi-pencil-square me-1"></i>Prepare in the CRM</a>{% endif %}{% endblock %}

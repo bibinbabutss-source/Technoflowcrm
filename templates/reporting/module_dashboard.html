@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load static crm %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="tf-page-head">
+  <div><h1><i class="bi bi-{{ icon }} me-2"></i>{{ title }}</h1>
+    <p>Counted from CRM records you may see. Click a card or a bar to open the matching records.</p></div>
+  <div class="tf-actions"><a class="btn btn-outline-primary" href="{% url list_url %}"><i class="bi bi-list-ul me-1"></i>Open the list</a></div>
+</div>
+<nav class="tf-dash-tabs mb-3" aria-label="Dashboards">{% for key, label, ic in modules %}<a class="btn btn-sm {% if key == module %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% url 'dashboards:module' module=key %}?period={{ preset }}{% if preset == 'custom' %}&amp;start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% endif %}"{% if key == module %} aria-current="page"{% endif %}><i class="bi bi-{{ ic }} me-1"></i>{{ label|cut:" Dashboard" }}</a>{% endfor %}</nav>
+{% include "performance/_period.html" %}
+{% if employees|length > 1 %}<form class="d-flex gap-2 align-items-center mb-3" method="get" data-no-spinner>
+  <input type="hidden" name="period" value="{{ preset }}">{% if preset == "custom" %}<input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}"><input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">{% endif %}
+  <label class="small text-secondary" for="dash-emp">Employee</label>
+  <select class="form-select form-select-sm" id="dash-emp" name="employee" style="max-width:260px" onchange="this.form.submit()">
+    <option value="">Everyone you can see</option>{% for u in employees %}<option value="{{ u.pk }}" {% if u.pk == employee %}selected{% endif %}>{{ u|person }}</option>{% endfor %}</select>
+  <noscript><button class="btn btn-sm btn-outline-primary">Apply</button></noscript></form>{% endif %}
+<div class="row g-3 mb-3">{% for c in cards %}
+  <div class="col-6 col-md-4 col-xl-3"><{% if c.url %}a href="{{ c.url }}"{% else %}div{% endif %} class="tf-kpi tf-kpi-{{ c.tone }} d-block h-100 text-decoration-none">
+    <div class="label"><i class="bi bi-{{ c.icon }}"></i>{{ c.label }}{% if c.now %} <span class="badge-status badge-inactive">now</span>{% endif %}</div>
+    <div class="value">{% if c.money %}{{ c.value|money }}{% else %}{{ c.value }}{% endif %}</div>
+    {% if c.sub %}<div class="sub">{{ c.sub }}</div>{% endif %}</{% if c.url %}a{% else %}div{% endif %}></div>{% endfor %}
+</div>
+<div class="row g-3">{% for ch in charts %}
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">{{ ch.title }}</div>
+    <div class="card-body" style="height:300px"><canvas id="ch-{{ ch.id }}" data-dash-chart="{{ forloop.counter0 }}" aria-label="{{ ch.title }}" role="img"></canvas></div></div></div>{% endfor %}
+</div>
+{{ charts|json_script:"dash-charts" }}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/dashboards.js' %}"></script>
+{% endblock %}

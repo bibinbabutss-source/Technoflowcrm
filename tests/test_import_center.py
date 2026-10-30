@@ -116,15 +116,16 @@ def test_missing_required_columns(org):
 
 # ------------------------------------------------------------------ validation, partial failures, report
 def test_partial_validation_failures_and_problem_report(org):
-    rows = [["Lead title", "Company name", "Sales Engineer", "Estimated value", "Date received", "Email", "Phone"],
-            ["Good lead", "Alpha LLC", "eng.one", "1,500.50", "15/03/2026", "a@alpha.example", "+971 50 123 4567"],
-            ["Bad date", "Beta LLC", "eng.one", "100", "31/02/2026", "", ""],
-            ["Bad number", "Gamma LLC", "eng.one", "abc", "", "", ""],
-            ["", "Delta LLC", "eng.one", "", "", "", ""],
-            ["Bad email", "Eps LLC", "eng.one", "", "", "not-an-email", ""],
-            ["Bad employee", "Zeta LLC", "nobody.here", "", "", "", ""],
-            ["Bad phone", "Eta LLC", "eng.one", "", "", "", "12"],
-            ["Future", "Theta LLC", "eng.one", "", (TODAY + datetime.timedelta(days=5)).isoformat(), "", ""]]
+    rows = [["Lead title", "Company name", "Sales Engineer", "Estimated value", "Date received", "Email", "Phone",
+             "Lead category"],
+            ["Good lead", "Alpha LLC", "eng.one", "1,500.50", "15/03/2026", "a@alpha.example", "+971 50 123 4567", "Tender"],
+            ["Bad date", "Beta LLC", "eng.one", "100", "31/02/2026", "", "", "Tender"],
+            ["Bad number", "Gamma LLC", "eng.one", "abc", "", "", "", "Tender"],
+            ["", "Delta LLC", "eng.one", "", "", "", "", "Tender"],
+            ["Bad email", "Eps LLC", "eng.one", "", "", "not-an-email", "", "Tender"],
+            ["Bad employee", "Zeta LLC", "nobody.here", "", "", "", "", "Tender"],
+            ["Bad phone", "Eta LLC", "eng.one", "", "", "", "12", "Tender"],
+            ["Future", "Theta LLC", "eng.one", "", (TODAY + datetime.timedelta(days=5)).isoformat(), "", "", "Tender"]]
     r, batch = upload(org["a"], "leads", xlsx(rows))
     res = results(batch)
     assert res[2]["status"] == "new"
@@ -207,8 +208,8 @@ def test_customer_duplicates_and_reliable_updates(org):
 
 
 def test_lead_duplicates_and_same_file_twice(org):
-    rows = [["Lead title", "Company name", "Sales Engineer", "Email", "Reference"],
-            ["Valve enquiry", "Omega LLC", "eng.one", "buyer@omega.example", "L-1"]]
+    rows = [["Lead title", "Company name", "Sales Engineer", "Email", "Reference", "Category"],
+            ["Valve enquiry", "Omega LLC", "eng.one", "buyer@omega.example", "L-1", "Job in Hand"]]
     r, batch = upload(org["a"], "leads", xlsx(rows))
     run(org["a"], batch)
     r, again = upload(org["a"], "leads", xlsx(rows))
@@ -216,7 +217,7 @@ def test_lead_duplicates_and_same_file_twice(org):
     run(org["a"], again)
     assert Lead.objects.filter(title="Valve enquiry").count() == 1
     # different reference but same company/email as an open lead → possible duplicate, skipped
-    rows2 = [rows[0], ["Another title", "Omega LLC", "eng.one", "buyer@omega.example", "L-9"]]
+    rows2 = [rows[0], ["Another title", "Omega LLC", "eng.one", "buyer@omega.example", "L-9", "Tender"]]
     r, b3 = upload(org["a"], "leads", xlsx(rows2))
     assert results(b3)[2]["status"] == "duplicate" and "open lead" in results(b3)[2]["messages"][0]
 
@@ -224,8 +225,8 @@ def test_lead_duplicates_and_same_file_twice(org):
 # ------------------------------------------------------------------ ownership
 def test_ownership_rules(org):
     # an engineer's import is theirs; naming another employee is refused, not silently changed
-    rows = [["Lead title", "Company name", "Sales Engineer"], ["Mine", "Mine LLC", ""], ["Theirs", "Theirs LLC",
-                                                                                          "eng.two"]]
+    rows = [["Lead title", "Company name", "Sales Engineer", "Category"], ["Mine", "Mine LLC", "", "Tender"],
+            ["Theirs", "Theirs LLC", "eng.two", "Tender"]]
     r, batch = upload(org["c1"], "leads", xlsx(rows))
     res = results(batch)
     assert res[2]["status"] == "new"
@@ -234,11 +235,11 @@ def test_ownership_rules(org):
     lead = Lead.objects.get(title="Mine")
     assert lead.assigned_engineer == org["e1"] and lead.created_by == org["e1"]
     # an administrator must name the employee: nothing is attributed to the admin automatically
-    r, b2 = upload(org["a"], "leads", xlsx([["Lead title", "Company name"], ["Admin lead", "Adm LLC"]]))
+    r, b2 = upload(org["a"], "leads", xlsx([["Lead title", "Company name", "Category"], ["Admin lead", "Adm LLC", "PE"]]))
     assert results(b2)[2]["status"] == "error" and "Employee is required" in results(b2)[2]["messages"][0]
     # the director may import for any employee
-    r, b3 = upload(org["d"], "leads", xlsx([["Lead title", "Company name", "Sales Engineer"],
-                                            ["For two", "Two LLC", org["e2"].email]]))
+    r, b3 = upload(org["d"], "leads", xlsx([["Lead title", "Company name", "Sales Engineer", "Lead type"],
+                                            ["For two", "Two LLC", org["e2"].email, "Purchase Enquiry"]]))
     run(org["d"], b3)
     assert Lead.objects.get(title="For two").assigned_engineer == org["e2"]
     # an engineer cannot open someone else's import

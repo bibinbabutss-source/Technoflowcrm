@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "reporting",
     "documents",
     "notifications",
+    "owner",
 ]
 
 MIDDLEWARE = [

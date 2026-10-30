@@ -1,0 +1,4 @@
+<div class="tf-pills" role="radiogroup"{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>{% for group, options, index in widget.optgroups %}{% for option in options %}
+  <input type="radio" class="btn-check" name="{{ option.name }}" value="{{ option.value }}" id="{{ option.attrs.id }}"{% if option.selected %} checked{% endif %}{% if widget.attrs.disabled %} disabled{% endif %}{% if widget.required %} required{% endif %} autocomplete="off">
+  <label class="btn tf-pill tf-pill-{{ option.value }}" for="{{ option.attrs.id }}">{{ option.label }}</label>{% endfor %}{% endfor %}
+</div>

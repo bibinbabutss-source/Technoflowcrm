@@ -31,15 +31,16 @@ else
   echo "    ADMIN_USERNAME is not set; skipping. (Nobody can sign in until a System Administrator exists.)"
 fi
 
-echo "==> Demo users"
-if [ -n "${DEMO_USERS_PASSWORD:-}" ]; then
-  python manage.py load_demo_users --password-env DEMO_USERS_PASSWORD --allow-production --no-password-change
-  if [ "${LOAD_DEMO_DATA:-false}" = "true" ]; then
-    echo "==> Fictional demo records"
-    python manage.py load_demo_data --allow-production --if-missing
-  fi
+# Demo data is never created by a deploy (removed Oct 2026). Use load_demo_users / load_demo_data only on a
+# laptop or a separate demo server.
+if [ "${REMOVE_DEMO_DATA:-}" = "yes" ]; then
+  # Starting fresh (after a database backup): remove the fictional demo records, deactivate the demo logins.
+  # Genuine records, users, roles and settings are kept. Running it again does nothing.
+  echo "==> Removing demo data (REMOVE_DEMO_DATA=yes)"
+  python manage.py remove_demo_data --confirm
 else
-  echo "    DEMO_USERS_PASSWORD is not set; no demo users created."
+  echo "==> Demo data check (preview only, nothing is changed; set REMOVE_DEMO_DATA=yes to remove)"
+  python manage.py remove_demo_data || true
 fi
 
 echo "==> Build finished"

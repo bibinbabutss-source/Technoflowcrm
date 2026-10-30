@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Modules & Approvals{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1><i class="bi bi-toggles me-2"></i>Modules &amp; Approvals</h1>
+  <p>Show or hide the Finance module and decide who approves. Every change is recorded in the audit log.</p></div></div>
+<div class="card" style="max-width:760px"><div class="card-body">
+  {% include "partials/form_errors.html" %}
+  <form method="post" novalidate>{% csrf_token %}
+    <h2 class="h6 text-uppercase text-secondary">Finance module</h2>
+    <div class="form-check form-switch mb-1">{{ form.finance_enabled }}<label class="form-check-label fw-semibold" for="{{ form.finance_enabled.id_for_label }}">{{ form.finance_enabled.label }}</label></div>
+    <p class="small text-secondary">{{ form.finance_enabled.help_text }}</p>
+    <h2 class="h6 text-uppercase text-secondary mt-4">Approvals</h2>
+    {% if not owner_ok %}<div class="alert alert-warning small">No active Owner account exists yet. Create one in User Management (role "Owner"); until then the Sales Director and System Administrator can still approve.</div>{% endif %}
+    <div class="form-check form-switch mb-1">{{ form.director_backup_approval }}<label class="form-check-label fw-semibold" for="{{ form.director_backup_approval.id_for_label }}">{{ form.director_backup_approval.label }}</label></div>
+    <p class="small text-secondary">{{ form.director_backup_approval.help_text }}</p>
+    <div class="row">{% with field=form.approval_threshold %}<div class="col-md-6">{% include "partials/field.html" %}</div>{% endwith %}{% with field=form.discount_approval_limit %}<div class="col-md-6">{% include "partials/field.html" %}</div>{% endwith %}</div>
+    <button class="btn btn-primary" type="submit">Save</button>
+  </form>
+</div></div>
+{% endblock %}

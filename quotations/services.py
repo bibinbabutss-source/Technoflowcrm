@@ -13,7 +13,6 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.permissions import has_capability
 from core.activity import record
 from core.audit import log_action
 from core.models import CompanyProfile
@@ -80,11 +79,10 @@ def _set_status(rev, status, **fields):
 
 
 def _approvers(exclude):
-    from django.contrib.auth import get_user_model
+    """Who is asked to approve: the Owner(s); the Sales Director only when allowed as backup (see approvals)."""
+    from owner.rules import approver_users
 
-    User = get_user_model()
-    return [u for u in User.objects.filter(is_active=True, profile__role__capabilities__code="quotations.approve")
-            .distinct() if u not in exclude]
+    return [u for u in approver_users() if u not in exclude]
 
 
 def _check_current(rev):
@@ -100,7 +98,12 @@ def submit(rev, user):
     _check_current(rev)
     if rev.status != S.DRAFT:
         raise ValidationError("Only a draft can be submitted.")
-    if not rev.lines.exists():
+    uploaded = rev.quotation.is_uploaded
+    if uploaded:
+        from .uploads import submit_checks
+
+        submit_checks(rev)
+    elif not rev.lines.exists():
         raise ValidationError("Add at least one line before submitting.")
     if rev.grand_total <= 0:
         raise ValidationError("The grand total must be greater than zero.")
@@ -108,7 +111,8 @@ def submit(rev, user):
         raise ValidationError("The expiry date cannot be before the quotation date.")
     if rev.expiry_date < timezone.localdate():
         raise ValidationError("The expiry date has already passed. Change it before submitting.")
-    recalculate(rev)  # never trust stored totals at the moment of locking
+    if not uploaded:
+        recalculate(rev)  # never trust stored totals at the moment of locking
     needed, reason = approval_needed(rev)
     rev.approval_required = needed
     rev.approval_reason = reason
@@ -132,9 +136,12 @@ def submit(rev, user):
 
 
 def _can_decide(rev, user):
+    from owner.rules import may_approve
+
     q = rev.quotation
-    if not has_capability(user, "quotations.approve"):
-        raise PermissionDenied("You are not allowed to approve quotations.")
+    allowed, why = may_approve(user)
+    if not allowed:
+        raise PermissionDenied(why)
     if user.pk in (q.salesperson_id, rev.created_by_id, rev.submitted_by_id, q.created_by_id):
         raise PermissionDenied("You cannot approve or reject a quotation you prepared or are the salesperson for.")
 

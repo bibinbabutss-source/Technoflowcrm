@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}Team Calendar{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1><i class="bi bi-calendar3 me-2"></i>Team Calendar</h1>
+  <p>{% if selected_employee %}{{ selected_employee|person }}'s calendar{% else %}Combined calendar of {{ employees|length }} employee{{ employees|length|pluralize }}{% endif %}: visits, meetings, follow-ups, tasks and deadlines. Click an entry to open it.</p></div>
+  <div class="btn-group" role="group" aria-label="View">
+    <a class="btn {% if view == 'month' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% querystring view='month' %}"><i class="bi bi-calendar3 me-1"></i>Month</a>
+    <a class="btn {% if view == 'list' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% querystring view='list' %}"><i class="bi bi-list-ul me-1"></i>List</a></div></div>
+<form class="card card-body py-2 mb-3" method="get" data-no-spinner>
+  <input type="hidden" name="view" value="{{ view }}">{% if view == "month" and request.GET.year %}<input type="hidden" name="year" value="{{ request.GET.year }}"><input type="hidden" name="month" value="{{ request.GET.month }}">{% endif %}
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3"><label class="form-label small mb-1" for="cal-emp">Employee</label>
+      <select class="form-select form-select-sm" id="cal-emp" name="employee"><option value="">All employees (combined)</option>{% for u in employees %}<option value="{{ u.pk }}" {% if u.pk == employee %}selected{% endif %}>{{ u|person }}</option>{% endfor %}</select></div>
+    <div class="col-md-5"><span class="form-label small mb-1 d-block">Activity type</span><div class="d-flex flex-wrap gap-2">{% for key, label in types %}
+      <label class="form-check form-check-inline small mb-0"><input class="form-check-input" type="checkbox" name="type" value="{{ key }}" {% if key in selected_types %}checked{% endif %}> {{ label }}</label>{% endfor %}</div></div>
+    {% if view == "list" %}<div class="col-6 col-md-2"><label class="form-label small mb-1" for="cal-s">From</label><input class="form-control form-control-sm" type="date" id="cal-s" name="start" value="{{ start|date:'Y-m-d' }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1" for="cal-e">To</label><input class="form-control form-control-sm" type="date" id="cal-e" name="end" value="{{ end|date:'Y-m-d' }}"></div>{% endif %}
+    <div class="col-md-auto"><button class="btn btn-sm btn-primary" type="submit">Apply</button></div></div>
+  <div class="d-flex flex-wrap gap-2 mt-2 small">{% for key, label in status_labels.items %}<span class="badge-status {{ status_tone|get_item:key|tone_class }}">{{ label }}: {{ counts|get_item:key }}</span>{% endfor %}</div>
+</form>
+{% if view == "month" %}
+<p class="small text-secondary d-md-none mb-2"><i class="bi bi-phone me-1"></i>On a phone, the <a href="{% querystring view='list' %}">List view</a> shows each entry in full.</p>
+<div class="card"><div class="card-body">{% include "partials/calendar.html" %}</div></div>
+{% else %}
+<div class="card"><div class="table-responsive"><table class="table table-sm table-hover mb-0 small align-middle">
+  <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Activity</th><th>Employee</th><th>Status</th></tr></thead>
+  <tbody>{% for e in events %}<tr><td class="text-nowrap">{{ e.date|date:"D d M" }}</td><td>{{ e.time|time:"H:i"|default:"—" }}</td><td>{{ e.type_label }}</td>
+    <td><a href="{{ e.url }}">{{ e.title }}</a><div class="text-secondary">{{ e.detail }}</div></td><td>{{ e.who }}</td>
+    <td><span class="badge-status {{ e.tone|tone_class }}">{{ e.status_label }}</span></td></tr>
+  {% empty %}<tr><td colspan="6" class="tf-empty">No activities in this period.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endif %}
+<p class="small text-secondary mt-2">You see the employees inside your data scope only. Each entry opens the record, which checks access again.</p>
+{% endblock %}

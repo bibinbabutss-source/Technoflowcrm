@@ -1,0 +1,5 @@
+{% extends "crud/form.html" %}
+{% block form_top %}
+<div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i>Quotations are prepared in your quotation system; here you store the finished document.
+  {% if q %}This becomes <b>{{ next_label }}</b> of {{ q.number }}. The current revision and its file are kept unchanged and stay downloadable.{% else %}The first upload is the <b>Original</b>; later uploads become R1, R2 … and one of them can be marked <b>Final</b>.{% endif %}</div>
+{% endblock %}

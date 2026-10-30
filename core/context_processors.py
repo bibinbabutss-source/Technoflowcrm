@@ -10,7 +10,7 @@ def crm_context(request):
     if user is not None and user.is_authenticated:
         profile = get_profile(user)
         ctx["crm_profile"] = profile
-        ctx["crm_nav"] = build_nav(user)
+        ctx["crm_nav"] = build_nav(user, request.path)
         ctx["crm_caps"] = profile.capability_codes() if profile else set()
         if profile is not None:
             from notifications.models import Notification

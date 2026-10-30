@@ -9,10 +9,10 @@ from .models import Opportunity, OpportunityStage, OpportunityStageHistory
 
 DEFAULT_STAGES = [
     # name, order, default probability, won, lost
-    ("Initial Discussion", 10, 10, False, False),
+    ("Qualification", 10, 10, False, False),
     ("Requirements Gathering", 20, 20, False, False),
     ("Technical Assessment", 30, 30, False, False),
-    ("Proposal Preparation", 40, 40, False, False),
+    ("Proposal", 40, 40, False, False),
     ("Proposal Submitted", 50, 50, False, False),
     ("Negotiation", 60, 70, False, False),
     ("Won", 70, 100, True, False),

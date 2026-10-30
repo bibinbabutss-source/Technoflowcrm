@@ -103,6 +103,6 @@ def report_view(request, key):
     report = get_report(key)
     if report is None:
         raise Http404
-    if not has_capability(request.user, report.capability):
+    if not report.allowed(request.user):
         raise PermissionDenied
     return report.respond(request)

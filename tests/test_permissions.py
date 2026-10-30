@@ -56,9 +56,10 @@ def test_accounts_role_has_no_lead_or_quotation_access(make_user):
     assert has_capability(user, "payments.manage")
 
 
-def test_only_director_and_admin_approve_quotations(make_user):
+def test_only_owner_director_and_admin_hold_the_approve_permission(make_user):
+    # the permission; who may actually decide is narrowed further by owner.rules (tested in test_owner_features)
     allowed = {r.code for r in Role.objects.filter(capabilities__code="quotations.approve")}
-    assert allowed == {caps.ADMIN, caps.DIRECTOR}
+    assert allowed == {caps.OWNER, caps.ADMIN, caps.DIRECTOR}
 
 
 def test_removing_capability_takes_effect(make_user, login):

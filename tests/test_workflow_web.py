@@ -40,7 +40,7 @@ def test_full_sales_to_cash_workflow(team):
     today = timezone.localdate()
 
     # 1. Engineer creates a lead (owner defaults to themselves)
-    submit(e, reverse("leads:create"), {"title": "Chiller replacement", "company_name": "Workflow Test Trading LLC",
+    submit(e, reverse("leads:create"), {"category": "tender", "title": "Chiller replacement", "company_name": "Workflow Test Trading LLC",
                                         "contact_person": "Test Buyer", "email": "buyer@example.com",
                                         "phone": "+971 50 000 0001", "estimated_value": "100000"})
     lead = Lead.objects.get(title="Chiller replacement")

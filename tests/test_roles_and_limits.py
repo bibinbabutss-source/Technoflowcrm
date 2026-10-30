@@ -11,8 +11,9 @@ pytestmark = pytest.mark.django_db
 
 def test_default_roles_and_limits():
     limits = {r.code: r.max_accounts for r in Role.objects.all()}
-    assert limits == {caps.ADMIN: 1, caps.DIRECTOR: 2, caps.ACCOUNTS: 2, caps.ENGINEER: 2, caps.COORDINATOR: 3}
-    assert sum(limits.values()) == 10
+    assert limits == {caps.OWNER: 1, caps.ADMIN: 1, caps.DIRECTOR: 2, caps.ACCOUNTS: 2, caps.ENGINEER: 2,
+                      caps.COORDINATOR: 3}
+    assert sum(limits.values()) == 11  # 10 original seats + 1 Owner (Oct 2026)
 
 
 def test_third_sales_engineer_is_refused(make_user):

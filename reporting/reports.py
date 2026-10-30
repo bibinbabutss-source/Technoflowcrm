@@ -58,6 +58,12 @@ class Report:
     uses_employee: bool = True
     uses_customer: bool = False
     statuses: list = None
+    finance: bool = False  # shows order / invoice / collection figures: hidden while Finance is turned off
+
+    def allowed(self, user):
+        if not has_capability(user, self.capability):
+            return False
+        return not self.finance or has_capability(user, "orders.view") or has_capability(user, "invoices.view")
 
     def context(self, request):
         today = timezone.localdate()
@@ -773,11 +779,11 @@ REPORTS = [
     R("pipeline", "Sales", "Pipeline value", "Open pipeline by stage with weighted forecast.", "reports.sales",
       r_pipeline, uses_dates=False),
     R("sales_by_employee", "Sales", "Sales by employee", "Quotations, orders, invoices and collections per employee.",
-      "team.view", r_sales_by_employee),
+      "team.view", r_sales_by_employee, finance=True),
     R("sales_by_customer", "Sales", "Sales by customer", "Orders booked per customer.", "reports.sales",
-      r_sales_by_customer, uses_customer=True),
+      r_sales_by_customer, uses_customer=True, finance=True),
     R("sales_by_period", "Sales", "Sales by period", "Monthly quotations, orders, invoices and collections.",
-      "reports.sales", r_sales_by_period),
+      "reports.sales", r_sales_by_period, finance=True),
     R("won_lost", "Sales", "Won and lost opportunities", "Opportunities closed in the period with win rate.",
       "reports.sales", r_won_lost),
     R("forecast", "Sales", "Expected closing forecast", "Open pipeline by expected closing month.", "reports.sales",
@@ -803,14 +809,14 @@ REPORTS = [
     R("quote_conversion", "Quotations", "Quotation conversion rate", "Accepted ÷ decided, per salesperson.",
       "reports.sales", r_quote_conversion),
     R("confirmed_orders", "Orders", "Confirmed orders", "Orders confirmed in the period.", "reports.sales",
-      r_confirmed_orders, uses_customer=True),
+      r_confirmed_orders, uses_customer=True, finance=True),
     R("order_value_period", "Orders", "Order booking value", "Booking value by month.", "reports.sales",
-      r_order_value_period),
+      r_order_value_period, finance=True),
     R("orders_by_customer", "Orders", "Orders by customer", "Booking value per customer.", "reports.sales",
-      r_sales_by_customer, uses_customer=True),
+      r_sales_by_customer, uses_customer=True, finance=True),
     R("orders_by_employee", "Orders", "Orders by employee", "Booking value per employee.", "reports.sales",
-      r_orders_by_employee),
-    R("order_status", "Orders", "Order status", "Orders by status.", "reports.sales", r_order_status),
+      r_orders_by_employee, finance=True),
+    R("order_status", "Orders", "Order status", "Orders by status.", "reports.sales", r_order_status, finance=True),
     R("invoices_issued", "Financial", "Invoices issued", "Invoices issued in the period.", "reports.financial",
       r_invoices_issued, uses_customer=True),
     R("collections", "Financial", "Collections received", "Payments and reversals in the period.",
@@ -848,7 +854,7 @@ def get_report(key):
 def report_groups(user):
     groups = OrderedDict((g, []) for g in GROUP_ORDER)
     for r in REPORTS:
-        if has_capability(user, r.capability):
+        if r.allowed(user):
             groups[r.group].append(r)
     return [(g, items) for g, items in groups.items() if items]
 

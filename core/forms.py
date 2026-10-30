@@ -109,3 +109,9 @@ class TaxRateForm(BootstrapMixin, forms.ModelForm):
         if data.get("is_default") and not data.get("is_active"):
             self.add_error("is_active", "The default rate must be active.")
         return data
+
+
+class PillRadioSelect(forms.RadioSelect):
+    """Radio choices shown as large, coloured, keyboard-accessible buttons (e.g. the lead category)."""
+
+    template_name = "widgets/pill_radio.html"

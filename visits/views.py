@@ -21,7 +21,7 @@ from .forms import CancelForm, CompleteForm, RescheduleForm, VisitForm
 from .models import OWNER_FIELDS, Visit
 
 TABS = [("List", "visits:list", "list-ul"), ("Calendar", "visits:calendar", "calendar3"),
-        ("Week", "visits:schedule", "calendar-week")]
+        ("Week", "visits:schedule", "calendar-week"), ("Dashboard", "dashboards:visits", "speedometer2")]
 
 
 def status_cell(v):

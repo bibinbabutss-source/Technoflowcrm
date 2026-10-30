@@ -20,15 +20,16 @@ class OpportunityForm(CrmFormMixin, forms.ModelForm):
         ("Opportunity", ["title", "customer", "lead", "source", "project_type", "location", "products_services",
                          "competitors"]),
         ("Value and forecast", ["estimated_value", "probability", "expected_close_date"]),
-        ("Ownership and next step", ["assigned_engineer", "assigned_coordinator", "next_action", "next_follow_up",
-                                     "notes"]),
+        ("Ownership and next step", ["assigned_engineer", "assigned_coordinator", "team_members", "next_action",
+                                     "next_follow_up", "notes"]),
     ]
 
     class Meta:
         model = Opportunity
         fields = ["title", "customer", "lead", "source", "project_type", "location", "products_services",
                   "competitors", "estimated_value", "probability", "expected_close_date", "assigned_engineer",
-                  "assigned_coordinator", "next_action", "next_follow_up", "notes"]
+                  "assigned_coordinator", "team_members", "next_action", "next_follow_up", "notes"]
+        widgets = {"team_members": forms.SelectMultiple(attrs={"size": 5})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,6 +39,13 @@ class OpportunityForm(CrmFormMixin, forms.ModelForm):
         })
         restrict_lookups(self, {"source": "lead_source", "project_type": "project_type"})
         setup_assignment(self)
+        self.fields["team_members"].queryset = active_employees()
+        self.fields["team_members"].help_text = ("Other employees working on it (hold Ctrl / Cmd to pick several). "
+                                                 "Revenue is credited once, to the responsible employee.")
+        self.fields["assigned_engineer"].label = "Responsible employee"
+        lead = self.initial.get("lead")
+        if not self.instance.pk and not self.is_bound and lead:
+            self._carry_forward(lead)
         if not self.instance.pk:
             first = OpportunityStage.first_open()
             self.fields["probability"].initial = first.default_probability if first else 10
@@ -45,11 +53,31 @@ class OpportunityForm(CrmFormMixin, forms.ModelForm):
         else:
             self.fields["probability"].help_text = "Won = 100%, Lost = 0% automatically."
 
+    def _carry_forward(self, lead_id):
+        """Copy the relevant lead details into a new opportunity form (the lead itself is never changed)."""
+        from leads.models import Lead
+
+        lead = Lead.objects.filter(pk=getattr(lead_id, "pk", lead_id)).first()
+        if lead is None:
+            return
+        for name, value in (("title", lead.title), ("source", lead.source_id), ("products_services", lead.interest),
+                            ("estimated_value", lead.estimated_value or None), ("location", lead.city),
+                            ("assigned_engineer", lead.assigned_engineer_id),
+                            ("assigned_coordinator", lead.assigned_coordinator_id),
+                            ("customer", lead.customer_id)):
+            if value and name in self.fields and not self.initial.get(name):
+                self.initial[name] = value
+
     def clean(self):
         data = super().clean()
         lead, customer = data.get("lead"), data.get("customer")
         if lead and customer and lead.customer_id and lead.customer_id != customer.pk:
             self.add_error("lead", "This lead was converted for a different customer.")
+        if lead:
+            other = Opportunity.objects.filter(lead=lead, is_archived=False).exclude(pk=self.instance.pk).first()
+            if other:
+                self.add_error("lead", f"This lead already has an opportunity ({other.code} {other.title}). "
+                                       "Open that one instead of creating a duplicate.")
         if self.instance.pk and self.instance.stage.is_closed and "probability" in self.changed_data:
             self.add_error("probability", "Probability is fixed for won or lost opportunities.")
         return data

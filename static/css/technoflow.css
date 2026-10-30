@@ -245,3 +245,21 @@ a.tf-stat-link:hover .card { border-color: #C9CF6B; }
 .tf-section-title i { color: var(--tf-olive); }
 .tf-chip-period .btn { --bs-btn-padding-y: .2rem; --bs-btn-padding-x: .6rem; --bs-btn-font-size: .8rem; }
 .tf-self-reported { background: #FFF8E6; border: 1px dashed #C47F00; border-radius: .5rem; padding: .5rem .75rem; font-size: .82rem; }
+
+/* ---- choice pills (lead category) and category colours ---- */
+.tf-pills { display: flex; flex-wrap: wrap; gap: .5rem; }
+.tf-pill:hover { border-color: #9fc23b; }
+.tf-pill { border: 2px solid var(--bs-border-color); border-radius: 999px; padding: .45rem 1.1rem; font-weight: 600;
+  background: #fff; color: #333; }
+.btn-check:focus-visible + .tf-pill { outline: 3px solid #9fc23b; outline-offset: 2px; }
+.tf-pills .btn-check:checked + .tf-pill-job_in_hand, .tf-pills .btn-check:checked + .tf-pill-job_in_hand:hover { background: #1f8a4c !important; border-color: #1f8a4c !important; color: #fff !important; }
+.tf-pills .btn-check:checked + .tf-pill-tender, .tf-pills .btn-check:checked + .tf-pill-tender:hover { background: #1f66b3 !important; border-color: #1f66b3 !important; color: #fff !important; }
+.tf-pills .btn-check:checked + .tf-pill-purchase_enquiry, .tf-pills .btn-check:checked + .tf-pill-purchase_enquiry:hover { background: #c9741a !important; border-color: #c9741a !important; color: #fff !important; }
+.btn-check:checked + .tf-pill::before { content: "\2713  "; }
+
+/* ---- searchable drop-downs and dashboard tabs ---- */
+.ts-wrapper.form-select { padding: 0; } .ts-control { min-height: calc(1.5em + .75rem + 2px); }
+.ts-dropdown .active { background: var(--tf-green-soft); color: var(--tf-ink); }
+.tf-dash-tabs { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tf-kpi .sub { margin-top: .15rem; }
+.tf-approval { border-left: 5px solid #C9741A; }

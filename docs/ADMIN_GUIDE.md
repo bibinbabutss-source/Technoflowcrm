@@ -40,6 +40,11 @@ The last active System Administrator cannot be deactivated or moved to another r
 (Roles & Limits). Set monthly **"Won deals value"** targets in Targets & KPIs to show the target bars. See
 `docs/ENHANCEMENT_REPORT.md` for the rules and for the rollback step (switch that KPI off before rolling back).
 
+**Owner (Oct 2026)**: create one account with the role **Owner** in User Management. It has every permission
+and does all approvals. Modules & Approvals (Owner or Administrator) turns the Finance module on or off and allows
+the Sales Director to approve as backup. Lead sources are edited in Settings → Drop-down lists. Details:
+`docs/OWNER_UPDATE_REPORT.md`.
+
 **Audit log**: every create, change, delete, approval, sign-in and settings change, with before/after values.
 It cannot be edited. Filter and export to CSV.
 
@@ -183,6 +188,7 @@ Health check: `GET /healthz/` returns `ok` (used by Render; usable by any uptime
 | `create_system_admin --username … --email … --first-name … --last-name … [--password-env VAR] [--if-missing]` | First / emergency System Administrator |
 | `load_demo_users --password … [--no-password-change] [--allow-production]` | The five demo logins |
 | `load_demo_data [--allow-production] [--if-missing]` | Fictional demonstration records (never on real data) |
+| `remove_demo_data [--confirm]` (also removes uploaded quotation files of demo quotations) | Preview (default) or remove the fictional demo records and deactivate the demo logins; real records are kept. On Render: set `REMOVE_DEMO_DATA=yes` for one deploy |
 | `send_reminders [--force]` | Daily reminders (once per day unless `--force`) |
 | `migrate`, `collectstatic`, `check --deploy` | Standard Django maintenance |
 | `axes_reset`, `axes_reset_username <name>` | Clear sign-in lockouts |

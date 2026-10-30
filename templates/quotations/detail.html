@@ -1,12 +1,14 @@
 {% extends "base.html" %}{% load crm quotation_doc %}
-{% block title %}{{ q.number }} Rev {{ rev.version }}{% endblock %}
+{% block title %}{{ q.number }} {% if uploaded %}{{ rev.label }}{% else %}Rev {{ rev.version }}{% endif %}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'quotations:list' %}">Quotations</a></li><li class="breadcrumb-item active">{{ q.number }}</li></ol></nav>
 <div class="tf-page-head">
-  <div><h1>{{ q.number }} <small class="text-secondary">Rev {{ rev.version }}</small>
+  <div><h1>{{ q.number }} <small class="text-secondary">{% if uploaded %}{{ rev.label }}{% else %}Rev {{ rev.version }}{% endif %}</small>
+    {% if rev.is_final %}<span class="badge-status badge-active align-middle"><i class="bi bi-flag-fill"></i> Final</span>{% endif %}
+    {% if uploaded %}<span class="badge-status badge-info align-middle"><i class="bi bi-cloud-arrow-up"></i> Uploaded</span>{% endif %}
     <span class="badge-status {% if rev.status == 'accepted' %}badge-active{% elif rev.status == 'rejected' or rev.status == 'declined' %}badge-danger{% elif rev.status == 'submitted' %}badge-warning{% elif rev.status == 'approved' or rev.status == 'sent' %}badge-info{% else %}badge-inactive{% endif %} align-middle">{{ rev.get_status_display }}</span>
     {% if rev.is_locked %}<i class="bi bi-lock-fill text-secondary fs-6 align-middle" title="Locked: amounts cannot change"></i>{% endif %}</h1>
-    <p><a href="{{ q.customer.get_absolute_url }}">{{ q.customer.company_name }}</a>{% if q.opportunity %} · <a href="{{ q.opportunity.get_absolute_url }}">{{ q.opportunity }}</a>{% endif %} · Salesperson {{ q.salesperson|person }}</p></div>
+    <p><a href="{{ q.customer.get_absolute_url }}">{{ q.customer.company_name }}</a>{% if q.lead %} · Lead <a href="{{ q.lead.get_absolute_url }}">{{ q.lead.code }}</a>{% endif %}{% if q.opportunity %} · <a href="{{ q.opportunity.get_absolute_url }}">{{ q.opportunity }}</a>{% endif %} · Responsible {{ q.salesperson|person }}{% if q.external_number %} · Ref. {{ q.external_number }}{% endif %}</p></div>
   <div class="tf-actions">
     {% if actions.edit %}<a class="btn btn-outline-primary" href="{% url 'quotations:edit' q.pk %}"><i class="bi bi-pencil me-1"></i>Edit draft</a>{% endif %}
     {% if actions.submit %}<form method="post" action="{% url 'quotations:submit' q.pk %}" data-confirm="Submit {{ q.number }} Rev {{ rev.version }}? Its amounts will be locked.">{% csrf_token %}<button class="btn btn-primary" type="submit"><i class="bi bi-send me-1"></i>Submit for approval</button></form>{% endif %}
@@ -15,14 +17,17 @@
       <a class="btn btn-outline-secondary" href="{% url 'quotations:decline' q.pk %}">Customer declined</a>{% endif %}
     {% if actions.convert %}<a class="btn btn-primary" href="{% url 'orders:create_from_quotation' q.pk %}"><i class="bi bi-cart-check me-1"></i>Create sales order</a>{% endif %}
     {% if actions.revise %}<a class="btn btn-outline-secondary" href="{% url 'quotations:revise' q.pk %}"><i class="bi bi-files me-1"></i>Revise</a>{% endif %}
-    <a class="btn btn-outline-secondary" href="{% url 'quotations:preview' q.pk %}?rev={{ rev.version }}"><i class="bi bi-eye me-1"></i>Preview</a>
+    {% if actions.upload_revision %}<a class="btn btn-outline-primary" href="{% url 'quotations:upload_revision' q.pk %}"><i class="bi bi-cloud-arrow-up me-1"></i>Upload revision</a>{% endif %}
+    {% if actions.mark_final %}<form method="post" action="{% url 'quotations:mark_final' q.pk %}" data-confirm="Mark {{ rev.revision_code }} as the final quotation?">{% csrf_token %}<button class="btn btn-outline-success" type="submit"><i class="bi bi-flag me-1"></i>Mark as final</button></form>{% endif %}
+    {% if uploaded %}{% if rev.document %}<a class="btn btn-outline-secondary" href="{% url 'quotations:file' q.pk rev.version %}"><i class="bi bi-download me-1"></i>Download {{ rev.label }}</a>{% endif %}
+    {% else %}<a class="btn btn-outline-secondary" href="{% url 'quotations:preview' q.pk %}?rev={{ rev.version }}"><i class="bi bi-eye me-1"></i>Preview</a>
     <div class="btn-group"><a class="btn btn-outline-secondary" href="{% url 'quotations:pdf' q.pk %}?rev={{ rev.version }}&amp;download=1"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
-      <a class="btn btn-outline-secondary" href="{% url 'quotations:docx' q.pk %}?rev={{ rev.version }}"><i class="bi bi-file-earmark-word me-1"></i>Word</a></div>
+      <a class="btn btn-outline-secondary" href="{% url 'quotations:docx' q.pk %}?rev={{ rev.version }}"><i class="bi bi-file-earmark-word me-1"></i>Word</a></div>{% endif %}
     {% if actions.delete %}<form method="post" action="{% url 'quotations:delete' q.pk %}" data-confirm="Delete this draft quotation?">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button></form>{% endif %}
   </div>
 </div>
 
-{% if not is_current %}<div class="alert alert-warning">You are viewing an older revision (Rev {{ rev.version }}). <a href="{{ q.get_absolute_url }}">Open the current revision (Rev {{ q.current_version }})</a>.</div>{% endif %}
+{% if not is_current %}<div class="alert alert-warning">You are viewing an older revision ({% if uploaded %}{{ rev.label }}{% else %}Rev {{ rev.version }}{% endif %}). It is kept unchanged. <a href="{{ q.get_absolute_url }}">Open the latest revision</a>.</div>{% endif %}
 
 {% if actions.decide %}
 <div class="card mb-3 border-warning"><div class="card-body">
@@ -33,10 +38,29 @@
     <button class="btn btn-outline-danger" name="decision" value="reject" type="submit" data-no-spinner><i class="bi bi-x-lg me-1"></i>Reject</button>
   </form></div></div>
 {% elif actions.decide_blocked_own %}<div class="alert alert-info">This quotation is awaiting approval. You prepared it or are its salesperson, so another approver must decide.</div>
-{% elif rev.status == "submitted" %}<div class="alert alert-info">Awaiting approval by a Sales Director ({{ rev.approval_reason }}).</div>{% endif %}
+{% elif rev.status == "submitted" %}<div class="alert alert-info">Awaiting the Owner's approval ({{ rev.approval_reason }}). It is listed in Pending Approvals.</div>{% endif %}
 
 <div class="row g-3">
   <div class="col-xl-8">
+    {% if uploaded %}
+    <div class="card mb-3"><div class="card-header">Uploaded quotation · {{ rev.label }}</div><div class="card-body small"><dl class="row mb-0 tf-dl">
+      <dt class="col-sm-4">Quotation value</dt><dd class="col-sm-8 fs-6 fw-semibold">{{ rev.grand_total|money:rev.currency }}</dd>
+      <dt class="col-sm-4">Document</dt><dd class="col-sm-8">{% if rev.document %}<a href="{% url 'quotations:file' q.pk rev.version %}"><i class="bi bi-download me-1"></i>{{ rev.document.original_name }}</a> <span class="text-secondary">({{ rev.document.size|filesizeformat }})</span>{% else %}—{% endif %}</dd>
+      <dt class="col-sm-4">Uploaded</dt><dd class="col-sm-8">{{ rev.document.uploaded_at|date:"d-M-Y H:i" }} by {{ rev.document.uploaded_by|person }}</dd>
+      <dt class="col-sm-4">Number in quotation system</dt><dd class="col-sm-8">{{ q.external_number|default:"—" }}</dd>
+      {% if rev.revision_notes %}<dt class="col-sm-4">Notes</dt><dd class="col-sm-8">{{ rev.revision_notes|linebreaksbr }}</dd>{% endif %}
+    </dl></div></div>
+    <div class="card mb-3"><div class="card-header">Revision history <span class="small text-secondary">· every version is kept; the latest is the one that counts</span></div>
+      <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0 small">
+        <thead><tr><th>Revision</th><th>Date / uploaded by</th><th>Notes</th><th>Status</th><th class="text-end">Value</th><th><span class="visually-hidden">Download</span></th></tr></thead>
+        <tbody>{% for r in revision_rows %}<tr class="{% if r.pk == rev.pk %}table-active{% endif %}">
+          <td class="text-nowrap"><a href="?rev={{ r.version }}"><b>{{ r.revision_code }}</b></a>{% if r.is_final %} <span class="badge-status badge-active"><i class="bi bi-flag-fill"></i> Final</span>{% endif %}{% if r.version == q.current_version %} <span class="badge-status badge-info">Latest</span>{% endif %}</td>
+          <td>{{ r.quotation_date|date:"d-M-Y" }}<div class="text-secondary">{{ r.created_by|person }}, {{ r.created_at|date:"d-M H:i" }}</div></td>
+          <td style="min-width:120px">{{ r.revision_notes|default:"—"|truncatechars:90 }}</td>
+          <td>{% if r.status == "superseded" %}<span class="badge-status badge-inactive">Superseded</span>{% else %}{{ r.get_status_display }}{% endif %}</td><td class="text-end text-nowrap">{{ r.grand_total|money }}</td>
+          <td class="text-end">{% if r.document %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'quotations:file' q.pk r.version %}" aria-label="Download {{ r.revision_code }}"><i class="bi bi-download"></i></a>{% endif %}</td></tr>{% endfor %}</tbody>
+      </table></div></div>
+    {% else %}
     <div class="card mb-3"><div class="card-header">Line items</div>
       <div class="table-responsive"><table class="table table-sm">
         <thead><tr><th>#</th><th>Description</th><th class="text-end">Qty</th><th>Unit</th><th class="text-end">Unit price</th><th class="text-end">Disc.</th><th class="text-end">Tax</th><th class="text-end">Net ({{ rev.currency }})</th></tr></thead>
@@ -64,6 +88,7 @@
       <tbody>{% for heading, content in doc.terms %}<tr><td class="fw-semibold">{{ heading }}</td><td>{{ content|rich }}</td></tr>{% endfor %}</tbody>
     </table></div>{% endif %}
     </div>
+    {% endif %}
   </div>
   <div class="col-xl-4">
     <div class="card mb-3"><div class="card-header">Summary</div><div class="card-body"><dl class="row mb-0 small tf-dl">
@@ -79,13 +104,14 @@
       {% if rev.revision_reason %}<dt class="col-6">Revision reason</dt><dd class="col-6">{{ rev.revision_reason }}</dd>{% endif %}
     </dl></div></div>
     {% if orders %}<div class="card mb-3"><div class="card-header">Sales orders</div><ul class="list-group list-group-flush">{% for o in orders %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ o.get_absolute_url }}">{{ o.number }}</a><span>{{ o.get_status_display }}</span></li>{% endfor %}</ul></div>{% endif %}
-    <div class="card mb-3"><div class="card-header">Revisions</div><ul class="list-group list-group-flush">{% for r in revisions %}
-      <li class="list-group-item small d-flex justify-content-between {% if r.pk == rev.pk %}bg-light{% endif %}"><a href="?rev={{ r.version }}">Rev {{ r.version }}</a><span>{{ r.get_status_display }} · {{ r.grand_total|money }}</span></li>{% endfor %}</ul></div>
-    <div class="card mb-3"><div class="card-header">Approval history (Rev {{ rev.version }})</div>
+    {% if not uploaded %}<div class="card mb-3"><div class="card-header">Revisions</div><ul class="list-group list-group-flush">{% for r in revisions %}
+      <li class="list-group-item small d-flex justify-content-between {% if r.pk == rev.pk %}bg-light{% endif %}"><a href="?rev={{ r.version }}">Rev {{ r.version }}</a><span>{{ r.get_status_display }} · {{ r.grand_total|money }}</span></li>{% endfor %}</ul></div>{% endif %}
+    <div class="card mb-3"><div class="card-header">Approval history ({% if uploaded %}{{ rev.label }}{% else %}Rev {{ rev.version }}{% endif %})</div>
       {% if approvals %}<ul class="list-group list-group-flush">{% for a in approvals %}<li class="list-group-item small"><strong>{{ a.get_decision_display }}</strong> · {{ a.decided_at|date:"d-M-Y H:i" }}{% if a.decided_by %} · {{ a.decided_by|person }}{% endif %}<br><span class="text-secondary">{{ a.grand_total|money }}</span>{% if a.comments %} — {{ a.comments }}{% endif %}</li>{% endfor %}</ul>
       {% else %}<div class="tf-empty py-3">No decision yet.</div>{% endif %}</div>
     {% include "documents/_panel.html" with target=q %}
     <div class="card"><div class="card-header">Activity</div><div class="card-body">{% include "partials/timeline.html" %}</div></div>
+    {% include "partials/change_history.html" %}
   </div>
 </div>
 {% endblock %}
