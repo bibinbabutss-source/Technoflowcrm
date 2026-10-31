@@ -1,7 +1,13 @@
-{% extends "crud/form.html" %}
+{% extends "crud/form.html" %}{% load static %}
 {% block form_top %}
+<div class="alert alert-info small"><i class="bi bi-diagram-3 me-1"></i><strong>Step 1 of the sales flow.</strong> Every lead belongs to a customer: choose an existing customer or add a new one with the company details below. Record meetings on the lead, then use <em>Move to Sales Pipeline</em> when it is ready.</div>
+{% if form.customer_duplicates %}
+<div class="alert alert-warning" id="customer-dups"><strong>Similar existing customers</strong> — choose one of them as the existing customer instead of creating a duplicate:
+  <ul class="mb-0 mt-1">{% for d in form.customer_duplicates %}<li><a href="{{ d.customer.get_absolute_url }}" target="_blank" rel="noopener">{{ d.customer }}</a> — {{ d.reasons|join:", " }}</li>{% endfor %}</ul></div>
+{% endif %}
 {% if form.duplicates %}
 <div class="alert alert-warning"><strong>Similar open leads</strong>
   <ul class="mb-0 mt-1">{% for d in form.duplicates %}<li><a href="{{ d.get_absolute_url }}" target="_blank" rel="noopener">{{ d.code }} {{ d.title }}</a> — {{ d.company_name }}</li>{% endfor %}</ul></div>
 {% endif %}
 {% endblock %}
+{% block scripts %}<script src="{% static 'js/lead-form.js' %}"></script>{% endblock %}

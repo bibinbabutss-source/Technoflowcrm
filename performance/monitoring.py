@@ -204,6 +204,10 @@ def list_figures(uids, start, end, target_period="month"):
                                          visit_date__lt=today), "assigned_to_id")
     late_leads = _count(owned(Lead.objects.filter(is_archived=False, stage__is_won=False, stage__is_lost=False,
                                                   next_follow_up__lt=today), "lead", uids), "owner_uid")
+    from meetings.models import Meeting
+
+    meetings_held = _count(Meeting.objects.filter(held_by_id__in=uids, meeting_date__gte=start,
+                                                  meeting_date__lte=end), "held_by_id")
     # sales target = the "Won deals value" target of the month / quarter / year containing the period's end
     target_period = target_period if target_period in ("month", "quarter", "year") else "month"
     m_start, m_end = period_bounds(target_period, end)
@@ -229,7 +233,7 @@ def list_figures(uids, start, end, target_period="month"):
             "pending_followups": followups.get(uid, 0), "overdue_tasks": overdue.get(uid, 0),
             "last_activity": last.get(uid), "target_month": m_start,
             "target_period": target_period, "target_end": m_end,
-            "leads_assigned": assigned.get(uid, 0), "visits_planned": planned.get(uid, 0),
+            "meetings_held": meetings_held.get(uid, 0), "leads_assigned": assigned.get(uid, 0), "visits_planned": planned.get(uid, 0),
             "opportunities_created": opps_created.get(uid, 0), "quotations_uploaded": uploaded.get(uid, 0),
             "quotations_revised": revised.get(uid, 0),
             "pending_activities": open_tasks.get(uid, 0) + upcoming_visits.get(uid, 0),
@@ -265,7 +269,7 @@ def achievement(actual, target):
 def totals(rows, keys=("leads_created", "open_leads", "visits_completed", "quotations_created", "deals_won",
                        "deals_lost", "won_value", "pending_followups", "overdue_tasks", "leads_assigned",
                        "visits_planned", "opportunities_created", "quotations_uploaded", "quotations_revised",
-                       "pending_activities", "overdue_activities")):
+                       "pending_activities", "overdue_activities", "meetings_held")):
     money = {"won_value"}
     return {k: sum((r.get(k, 0) for r in rows), ZERO if k in money else 0) for k in keys}
 

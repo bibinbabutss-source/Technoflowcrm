@@ -1,11 +1,12 @@
 {% extends "base.html" %}{% load crm %}
 {% block title %}{{ opp.code }} {{ opp.title }}{% endblock %}
 {% block content %}
-<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'sales:pipeline' %}">Sales pipeline</a></li><li class="breadcrumb-item active">{{ opp.code }}</li></ol></nav>
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'sales:kanban' %}">Sales pipeline</a></li><li class="breadcrumb-item active">{{ opp.code }}</li></ol></nav>
 <div class="tf-page-head">
   <div><h1>{{ opp.title }} <span class="badge-status {% if opp.stage.is_won %}badge-active{% elif opp.stage.is_lost %}badge-danger{% else %}badge-info{% endif %} align-middle">{{ opp.stage }}</span>{% if opp.is_archived %} <span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
     <p>{{ opp.code }} · <a href="{{ opp.customer.get_absolute_url }}">{{ opp.customer.company_name }}</a></p></div>
   <div class="tf-actions">
+    {% if can_add_meeting %}<a class="btn btn-primary" href="{% url 'meetings:add' 'opportunity' opp.pk %}"><i class="bi bi-people me-1"></i>Add meeting</a>{% endif %}
     {% if "quotations.edit" in crm_caps and opp.is_open and not opp.is_archived %}<a class="btn btn-primary" href="{% url 'quotations:upload' %}?opportunity={{ opp.pk }}&amp;customer={{ opp.customer_id }}{% if opp.lead_id %}&amp;lead={{ opp.lead_id }}{% endif %}"><i class="bi bi-cloud-arrow-up me-1"></i>Upload quotation</a>
     <a class="btn btn-outline-secondary" href="{% url 'quotations:create' %}?opportunity={{ opp.pk }}&amp;customer={{ opp.customer_id }}"><i class="bi bi-file-earmark-plus me-1"></i>Prepare in CRM</a>{% endif %}
     {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'sales:opportunity_edit' opp.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
@@ -15,6 +16,9 @@
     {% if can_archive %}<form method="post" action="{% url 'sales:opportunity_archive' opp.pk %}" data-confirm="{% if opp.is_archived %}Restore{% else %}Archive{% endif %} this opportunity?">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">{% if opp.is_archived %}Restore{% else %}Archive{% endif %}</button></form>{% endif %}
   </div>
 </div>
+<ol class="tf-steps mb-3" aria-label="Sales steps">{% for s in steps %}
+  <li class="{% if s.done %}done{% endif %}{% if s.tone %} tone-{{ s.tone }}{% endif %}"><span class="num">{% if s.done %}<i class="bi bi-check-lg"></i>{% else %}{{ forloop.counter }}{% endif %}</span><span><b>{{ s.label }}</b><small>{{ s.note }}</small></span></li>{% endfor %}
+</ol>
 <div class="row g-3 mb-3">
   <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Estimated value</div><div class="value fs-5">{{ opp.estimated_value|money }}</div></div></div>
   <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Closing probability</div><div class="value fs-5">{{ opp.probability }}%</div></div></div>
@@ -43,10 +47,11 @@
     {% include "documents/_panel.html" with target=opp %}
   </div>
   <div class="col-lg-7">
-    {% if quotations is not None and "quotations.view" in crm_caps %}<div class="card mb-3"><div class="card-header">Quotations</div>
-      {% if quotations %}<div class="table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Number</th><th>Rev.</th><th>Status</th><th class="text-end">Grand total</th><th>Salesperson</th></tr></thead><tbody>
-      {% for q in quotations %}<tr><td><a href="{{ q.get_absolute_url }}">{{ q.number }}</a></td><td>{{ q.current_version }}</td><td>{{ q.current.get_status_display }}</td><td class="text-end">{{ q.current.grand_total|money }}</td><td>{{ q.salesperson|person }}</td></tr>{% endfor %}</tbody></table></div>
-      {% else %}<div class="tf-empty py-3">No quotations yet.</div>{% endif %}</div>{% endif %}
+    {% include "meetings/_panel.html" %}
+    {% if quotations is not None and "quotations.view" in crm_caps %}<div class="card mb-3" id="quotations"><div class="card-header d-flex justify-content-between align-items-center"><span><i class="bi bi-file-earmark-text me-1"></i>Quotations</span>{% if "quotations.edit" in crm_caps and opp.is_open and not opp.is_archived %}<a class="btn btn-sm btn-outline-primary" href="{% url 'quotations:upload' %}?opportunity={{ opp.pk }}&amp;customer={{ opp.customer_id }}{% if opp.lead_id %}&amp;lead={{ opp.lead_id }}{% endif %}"><i class="bi bi-cloud-arrow-up me-1"></i>Upload</a>{% endif %}</div>
+      {% if quotations %}<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead><tr><th>Number</th><th>Version</th><th>Status</th><th class="text-end">Value</th><th>Responsible</th></tr></thead><tbody>
+      {% for q in quotations %}<tr><td><a href="{{ q.get_absolute_url }}">{{ q.number }}</a></td><td>{% if q.is_uploaded %}{{ q.current.label }}{% else %}Rev {{ q.current_version }}{% endif %}</td><td>{{ q.current.get_status_display }}</td><td class="text-end">{{ q.current.grand_total|money }}</td><td>{{ q.salesperson|person }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="tf-empty py-3">No quotations yet. Upload the offer from your quotation system when it is ready.</div>{% endif %}</div>{% endif %}
     {% if orders %}<div class="card mb-3"><div class="card-header">Sales orders</div><ul class="list-group list-group-flush">{% for o in orders %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ o.get_absolute_url }}">{{ o.number }}</a><span>{{ o.get_status_display }} · {{ o.net_amount|money }} excl. VAT</span></li>{% endfor %}</ul></div>{% endif %}
     {% if projects %}<div class="card mb-3"><div class="card-header">Projects under execution</div><ul class="list-group list-group-flush">{% for p in projects %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ p.get_absolute_url }}">{{ p }}</a><span>{{ p.get_status_display }} · {{ p.progress }}%</span></li>{% endfor %}</ul></div>{% endif %}
     {% if visits %}<div class="card mb-3"><div class="card-header">Visits</div><ul class="list-group list-group-flush">{% for v in visits %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ v.get_absolute_url }}">{{ v.code }} {{ v.visit_date|date:"d-M-Y" }}</a><span>{{ v.assigned_to|person }} · {{ v.get_status_display }}</span></li>{% endfor %}</ul></div>{% endif %}

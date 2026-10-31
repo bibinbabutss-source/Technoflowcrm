@@ -263,3 +263,22 @@ a.tf-stat-link:hover .card { border-color: #C9CF6B; }
 .tf-dash-tabs { display: flex; flex-wrap: wrap; gap: .4rem; }
 .tf-kpi .sub { margin-top: .15rem; }
 .tf-approval { border-left: 5px solid #C9741A; }
+
+/* ---- sales steps bar (opportunity page) and meeting cards ---- */
+.tf-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .5rem; }
+.tf-steps li { display: flex; gap: .55rem; align-items: center; background: #fff; border: 1px solid var(--tf-line); border-radius: .6rem; padding: .55rem .7rem; }
+.tf-steps .num { flex: none; width: 1.7rem; height: 1.7rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; background: #EEF0F2; color: var(--tf-grey); }
+.tf-steps li span:last-child { display: flex; flex-direction: column; line-height: 1.2; font-size: .85rem; }
+.tf-steps small { color: var(--tf-grey); }
+.tf-steps li.done { border-color: #B7DFC4; } .tf-steps li.done .num { background: #1E8E3E; color: #fff; }
+.tf-steps li.tone-bad { border-color: #F2B8B5; } .tf-steps li.tone-bad .num { background: #B42318; }
+.tf-meeting + .tf-meeting { border-top: 1px dashed var(--tf-line) !important; }
+
+/* Company history: one block per sales journey */
+.tf-journey { border: 1px solid var(--bs-border-color); border-radius: .5rem; padding: .75rem .9rem; margin-bottom: .75rem; }
+.tf-journey-steps { list-style: none; padding-left: 0; margin: .5rem 0; border-left: 2px solid var(--bs-border-color); }
+.tf-journey-steps li { position: relative; padding: 0 0 .35rem .9rem; }
+.tf-journey-steps li::before { content: ""; position: absolute; left: -6px; top: .35rem; width: 10px; height: 10px; border-radius: 50%; background: var(--bs-secondary-bg); border: 2px solid var(--bs-border-color); }
+.tf-journey-steps li.done::before { background: #198754; border-color: #198754; }
+.tf-journey-steps li.todo { color: var(--bs-secondary-color); }
+.tf-journey-opp { border-top: 1px dashed var(--bs-border-color); padding-top: .5rem; margin-top: .5rem; }

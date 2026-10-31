@@ -221,3 +221,29 @@ def duplicate_check(request):
                            phone=request.GET.get("phone", ""), trn=request.GET.get("trn", ""),
                            exclude_pk=get_int(request.GET, "exclude"))
     return render(request, "customers/_duplicates.html", {"duplicates": dups})
+
+
+@capability_required("customers.view")
+def company_picker(request):
+    """'View as a company': find a customer and open its full sales history."""
+    from accounts.permissions import scope_queryset
+
+    q = (request.GET.get("q") or "").strip()
+    qs = scope_queryset(Customer.objects.all(), request.user, OWNER_FIELDS)
+    if q:
+        qs = qs.filter(Q(company_name__icontains=q) | Q(code__icontains=q) | Q(contact_person__icontains=q))
+        if qs.count() == 1:
+            return redirect("customers:history", qs.get().pk)
+        results = list(qs.order_by("company_name")[:50])
+    else:
+        results = list(qs.order_by("-updated_at")[:20])
+    return render(request, "customers/history_picker.html", {"q": q, "results": results})
+
+
+@capability_required("customers.view")
+def company_history_view(request, pk):
+    from .history import company_history
+
+    customer = get_scoped_or_404(Customer, request.user, pk, OWNER_FIELDS)
+    data = company_history(customer, request.user)
+    return render(request, "customers/history.html", {"customer": customer, **data})

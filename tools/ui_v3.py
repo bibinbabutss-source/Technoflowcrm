@@ -147,6 +147,7 @@ with sync_playwright() as p:
         page.goto(BASE + "/leads/new/")
         check(f"{tag}: three category buttons", page.locator(".tf-pill").count() == 3)
         page.fill("input[name=title]", f"UI lead {STAMP}{'m' if mobile else ''}")
+        page.check("input[name=customer_mode][value=new]")
         page.fill("input[name=company_name]", f"UI Prospect {STAMP}{'m' if mobile else ''} LLC")
         page.locator("button[type=submit]", has_text="Save").click()
         page.wait_for_load_state("networkidle")
@@ -176,8 +177,8 @@ with sync_playwright() as p:
     page.fill("input[name=value]", "15000")
     cust = page.locator("select[name=customer]")
     if page.locator("#id_customer-ts-control").count():
-        page.locator("#id_customer-ts-control").click()
-        page.locator("#id_customer-ts-control").fill("Falcon")
+        page.locator("#id_customer + .ts-wrapper .ts-control").click()  # what a user clicks: the visible box
+        page.keyboard.type("Falcon")
         page.locator(".ts-dropdown .option", has_text="Falcon").first.click()
     else:
         cust.select_option(index=1)

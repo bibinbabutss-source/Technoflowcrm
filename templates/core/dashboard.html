@@ -8,6 +8,16 @@
   </div>
 </div>
 
+{% if "customers.view" in crm_caps %}
+<form class="card card-body mb-3 py-2 tf-company-view" method="get" action="{% url 'customers:history_picker' %}" role="search" data-no-spinner>
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-8"><label class="form-label small mb-1" for="company-view-q"><i class="bi bi-building me-1"></i>View as a company — the full sales history of one customer</label>
+      <input class="form-control form-control-sm" id="company-view-q" name="q" placeholder="Company name or customer ID"></div>
+    <div class="col-12 col-md-4 d-flex gap-2"><button class="btn btn-sm btn-primary" type="submit">View company</button><a class="btn btn-sm btn-outline-secondary" href="{% url 'customers:history_picker' %}">Browse companies</a></div>
+  </div>
+</form>
+{% endif %}
+
 {% if cards %}
 <form class="card card-body mb-3 py-2" method="get" data-no-spinner>
   <div class="row g-2 align-items-end">

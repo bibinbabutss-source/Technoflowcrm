@@ -16,7 +16,7 @@ from django.utils import timezone
 from accounts.permissions import has_capability, visible_user_ids
 from core.crud import person
 
-TYPES = [("visit", "Customer visits"), ("meeting", "Meetings (logged in Communication History)"), ("follow_up", "Follow-ups"), ("task", "Tasks"),
+TYPES = [("visit", "Customer visits"), ("meeting", "Meetings"), ("follow_up", "Follow-ups"), ("task", "Tasks"),
          ("deadline", "Deadlines (closing dates, quotation expiry)")]
 STATUS_TONE = {"completed": "good", "upcoming": "info", "pending": "warn", "overdue": "bad", "cancelled": "neutral"}
 STATUS_LABEL = {"completed": "Completed", "upcoming": "Upcoming", "pending": "Due today", "overdue": "Overdue",
@@ -71,6 +71,15 @@ def events(user, start, end, employee_ids=None, types=None):
                         "status": "completed" if when.date() <= today else "upcoming",
                         "title": f"{when:%H:%M} Meeting: {c.customer.company_name}", "employee": c.employee,
                         "detail": c.subject or "Customer meeting", "url": c.get_absolute_url()})
+
+    if "meeting" in types and (has_capability(user, "leads.view") or has_capability(user, "pipeline.view")):
+        from meetings.models import Meeting
+
+        qs = Meeting.objects.filter(meeting_date__gte=start, meeting_date__lte=end)
+        for m in _ids_filter(qs, "held_by_id", ids).select_related("held_by", "customer"):
+            out.append({"date": m.meeting_date, "time": m.start_time, "type": "meeting", "status": "completed",
+                        "title": f"Meeting: {m.customer.company_name}", "employee": m.held_by,
+                        "detail": m.summary[:120], "url": m.get_absolute_url()})
 
     if ({"follow_up", "task"} & types) and has_capability(user, "tasks.view"):
         qs = _ids_filter(Task.objects.filter(due_date__gte=start, due_date__lte=end), "assigned_to_id", ids)

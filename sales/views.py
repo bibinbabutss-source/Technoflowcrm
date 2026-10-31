@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.audit import change_history
+from meetings import services as meeting_services
 from accounts.permissions import capability_required, has_capability, scope_queryset
 from core import activity
 from core.crud import (BoolFilter, ChoiceFilter, Column, CrmCreateView, CrmListView, CrmUpdateView,
@@ -62,6 +63,8 @@ class PipelineList(CrmListView):
         Column("Weighted", lambda o: o.weighted_value, money=True),
         Column("Expected close", render=close_cell, text=lambda o: o.expected_close_date),
         Column("Sales Engineer", "assigned_engineer"),
+        Column("Meetings", "meeting_count", align="end"),
+        Column("Next follow-up", "next_follow_up", date=True),
         Column("Next action", "next_action"),
     ]
     sort_options = {
@@ -73,7 +76,8 @@ class PipelineList(CrmListView):
     default_sort = "close"
 
     def base_queryset(self):
-        return Opportunity.objects.select_related("customer", "stage", "assigned_engineer")
+        return meeting_services.annotate_opportunity_meetings(
+            Opportunity.objects.select_related("customer", "stage", "assigned_engineer"))
 
     def get_filters(self):
         today = timezone.localdate()
@@ -204,9 +208,37 @@ def opportunity_detail(request, pk):
         if has_capability(u, "visits.view") else [],
         "activities": activity.for_object(opp, u)[:30],
         "change_rows": change_history(opp, skip=("code", "stage_changed_at")),
+        "steps": _steps(opp),
+        "meetings": meeting_services.with_permissions(meeting_services.for_opportunity(opp), u), "meeting_counts": meeting_services.counts(opportunity=opp),
+        "kind": "opportunity", "meeting_parent": opp, "today": timezone.localdate(),
+        "can_add_meeting": has_capability(u, "pipeline.edit") and not opp.is_archived,
         "can_edit": has_capability(u, "pipeline.edit") and not opp.is_archived,
         "can_archive": has_capability(u, "pipeline.archive"),
     })
+
+
+def _steps(opp):
+    """The opportunity's progress through the fixed sales order, for the step bar at the top of its page."""
+    from meetings import services as meeting_services
+
+    quotes = list(opp.quotations.all())
+    statuses = {q.status for q in quotes}
+    n_meet = meeting_services.counts(opportunity=opp)["total"]
+    latest = max(quotes, key=lambda q: q.created_at, default=None)
+    outcome = "Won" if opp.stage.is_won else "Lost" if opp.stage.is_lost else "Open"
+    return [
+        {"label": "Customer & lead", "done": True, "note": opp.customer.company_name},
+        {"label": "Meetings", "done": n_meet > 0, "note": f"{n_meet} held" if n_meet else "none yet"},
+        {"label": "Quotation", "done": bool(quotes), "note": latest.display_number if latest else "not uploaded"},
+        {"label": "Approval", "done": bool(statuses & {"approved", "sent", "accepted", "declined", "expired"}),
+         "note": "approved" if statuses & {"approved", "sent", "accepted"} else
+         "waiting" if "submitted" in statuses else "—"},
+        {"label": "Customer answer", "done": bool(statuses & {"accepted", "declined"}),
+         "note": "accepted" if "accepted" in statuses else "declined" if "declined" in statuses else
+         "sent" if "sent" in statuses else "—"},
+        {"label": "Won / Lost", "done": opp.stage.is_closed, "note": outcome,
+         "tone": "good" if opp.stage.is_won else "bad" if opp.stage.is_lost else None},
+    ]
 
 
 @capability_required("pipeline.edit")

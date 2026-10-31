@@ -54,6 +54,9 @@ class Command(BaseCommand):
         opps = Opportunity.objects.filter(Q(customer__in=customers) | Q(lead__in=leads))
         quotes = Quotation.objects.filter(Q(customer__in=customers) | Q(opportunity__in=opps) | Q(lead__in=leads))
         quote_files = QuotationFile.objects.filter(revision__quotation__in=quotes)
+        from meetings.models import Meeting
+
+        meetings = Meeting.objects.filter(Q(customer__in=customers) | Q(lead__in=leads) | Q(opportunity__in=opps))
         orders = SalesOrder.objects.filter(Q(customer__in=customers) | Q(quotation__in=quotes))
         invoices = Invoice.objects.filter(Q(customer__in=customers) | Q(order__in=orders))
         payments = Payment.objects.filter(customer__in=customers)
@@ -76,7 +79,7 @@ class Command(BaseCommand):
 
         plan = [("Payment allocations", allocations), ("Payments", payments), ("Tasks", tasks),
                 ("Documents", documents), ("Invoices", invoices), ("Projects", projects), ("Sales orders", orders),
-                ("Visits", visits), ("Communications", comms), ("Quotation files", quote_files),
+                ("Visits", visits), ("Communications", comms), ("Meetings", meetings), ("Quotation files", quote_files),
                 ("Quotations", quotes), ("Opportunities", opps),
                 ("Leads", leads), ("Customers", customers), ("Targets of demo logins", targets),
                 ("Daily reports of demo logins", reports), ("Imports by demo logins", imports),

@@ -1,0 +1,26 @@
+{% load crm %}
+<div class="card mb-3" id="meetings">
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <span><i class="bi bi-people me-1"></i>Meetings
+      <span class="badge-status badge-info ms-1">{{ meeting_counts.total }} held</span>
+      {% if kind == "opportunity" %}<span class="small text-secondary ms-1">{{ meeting_counts.before_pipeline }} before the pipeline · {{ meeting_counts.in_pipeline }} in the pipeline</span>{% endif %}</span>
+    {% if can_add_meeting %}<a class="btn btn-sm btn-primary" href="{% url 'meetings:add' kind meeting_parent.pk %}"><i class="bi bi-plus-lg me-1"></i>Add meeting</a>{% endif %}
+  </div>
+  {% for m in meetings %}
+  <div class="card-body border-top tf-meeting" id="meeting-{{ m.pk }}">
+    <div class="d-flex flex-wrap justify-content-between gap-2">
+      <div><b>{{ m.meeting_date|date:"D d M Y" }}</b>{% if m.start_time %} · {{ m.start_time|time:"H:i" }}{% endif %}
+        <span class="badge-status badge-inactive ms-1">{{ m.get_meeting_type_display }}</span>
+        {% if kind == "opportunity" %}<span class="badge-status {% if m.in_pipeline %}badge-info{% else %}badge-warning{% endif %} ms-1">{{ m.stage_label }}</span>{% endif %}
+        <div class="small text-secondary">Held by {{ m.held_by|person }}{% if m.attendees %} · with {{ m.attendees }}{% endif %}{% if m.location %} · {{ m.location }}{% endif %}</div></div>
+      <div class="d-flex gap-1">{% if m.can_change %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'meetings:edit' m.pk %}"><i class="bi bi-pencil"></i><span class="visually-hidden">Edit meeting</span></a>{% endif %}
+        {% if m.can_delete %}<form method="post" action="{% url 'meetings:delete' m.pk %}" data-confirm="Delete this meeting record?">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i><span class="visually-hidden">Delete meeting</span></button></form>{% endif %}</div>
+    </div>
+    <div class="mt-2"><span class="small text-secondary d-block">Summary</span>{{ m.summary|linebreaksbr }}</div>
+    {% if m.points %}<div class="mt-2"><span class="small text-secondary d-block">Points discussed</span><ul class="mb-0">{% for p in m.points %}<li>{{ p }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if m.next_action or m.next_follow_up %}<div class="mt-2 small"><i class="bi bi-arrow-right-circle me-1"></i>{% if m.next_action %}<b>Next:</b> {{ m.next_action }}{% endif %}{% if m.next_follow_up %} · follow up {% if m.next_follow_up < today %}<span class="badge-status badge-danger">{{ m.next_follow_up|date:"d M Y" }}</span>{% else %}<span class="badge-status badge-warning">{{ m.next_follow_up|date:"d M Y" }}</span>{% endif %}{% endif %}</div>{% endif %}
+  </div>
+  {% empty %}
+  <div class="card-body tf-empty py-3">No meetings recorded yet.{% if can_add_meeting %} Click <b>Add meeting</b> after each meeting with the customer.{% endif %}</div>
+  {% endfor %}
+</div>

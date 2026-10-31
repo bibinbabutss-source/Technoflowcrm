@@ -157,10 +157,29 @@ class Command(BaseCommand):
             counts["leads"] += 1
 
         # one lead converted end-to-end into the first deal's customer + opportunity
-        conv = Lead(company_name=CUSTOMERS[0][0], title="Chiller plant enquiry", city="Dubai",
-                    estimated_value=Decimal(210000), assigned_engineer=eng, stage=stages[-1], priority="high")
+        # customer first: the lead is registered against the customer, meetings are recorded, then it moves on
+        from meetings.models import Meeting
+        from meetings import services as meeting_services
+
+        conv = Lead(company_name=CUSTOMERS[0][0], title="Chiller plant enquiry", city="Dubai", customer=customers[0],
+                    estimated_value=Decimal(210000), assigned_engineer=eng, stage=stages[-1], priority="high",
+                    category="job_in_hand")
         conv.save()
         counts["leads"] += 1
+        counts["meetings"] = 0
+        for days, summary, points in (
+                (21, "Introduction meeting with the facilities team (demo).",
+                 "Two chillers near end of life\nPlant room access only on weekends\nBudget approval in Q4"),
+                (12, "Technical review of the chiller plant (demo).",
+                 "Customer prefers magnetic-bearing chillers\nAsked for energy savings estimate")):
+            m = Meeting(customer=customers[0], lead=conv, meeting_date=today - datetime.timedelta(days=days),
+                        meeting_type="in_person", location="Customer office", attendees="Demo Contact 1",
+                        held_by=eng, summary=summary, points_discussed=points,
+                        next_action="Send technical comparison",
+                        next_follow_up=today - datetime.timedelta(days=days - 5))
+            m.save()
+            meeting_services.after_save(m, True)
+            counts["meetings"] += 1
 
         open_stages = list(OpportunityStage.objects.filter(is_won=False, is_lost=False, is_active=True))
         for n, (ci, title, lines, outcome, preset) in enumerate(DEALS):
@@ -171,6 +190,14 @@ class Command(BaseCommand):
                     "title": title, "estimated_value": Decimal(204000),
                     "expected_close_date": today + datetime.timedelta(days=20)})
                 opp = Opportunity.objects.get(lead=conv)
+                m = Meeting(customer=cust, opportunity=opp, lead=conv, in_pipeline=True,
+                            meeting_date=today - datetime.timedelta(days=2), meeting_type="online", held_by=eng,
+                            summary="Commercial discussion on the offer (demo).",
+                            points_discussed="Payment terms 30/60/10\nDelivery in 8 weeks",
+                            next_action="Send revised quotation", next_follow_up=today + datetime.timedelta(days=3))
+                m.save()
+                meeting_services.after_save(m, True)
+                counts["meetings"] += 1
             else:
                 opp = Opportunity(title=title, customer=cust, assigned_engineer=eng, assigned_coordinator=coord,
                                   stage=open_stages[min(2 + n % 3, len(open_stages) - 1)],

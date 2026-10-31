@@ -8,8 +8,10 @@
     {% if customer.is_archived %}<span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
     <p>{{ customer.code }}{% if customer.category %} · {{ customer.category }}{% endif %}{% if customer.industry %} · {{ customer.industry }}{% endif %}</p></div>
   <div class="tf-actions">
+    <a class="btn btn-primary" href="{% url 'customers:history' customer.pk %}"><i class="bi bi-clock-history me-1"></i>Company history</a>
     {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'customers:edit' customer.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>{% endif %}
     {% if not customer.is_archived %}
+      {% if "leads.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'leads:create' %}?customer={{ customer.pk }}"><i class="bi bi-funnel me-1"></i>Add lead</a>{% endif %}
       {% if "visits.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'visits:create' %}?customer={{ customer.pk }}"><i class="bi bi-calendar-plus me-1"></i>Schedule visit</a>{% endif %}
       {% if "communications.create" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'communications:create' %}?customer={{ customer.pk }}"><i class="bi bi-chat-left-text me-1"></i>Log communication</a>{% endif %}
       {% if "pipeline.edit" in crm_caps %}<a class="btn btn-outline-secondary" href="{% url 'sales:opportunity_create' %}?customer={{ customer.pk }}"><i class="bi bi-kanban me-1"></i>New opportunity</a>{% endif %}

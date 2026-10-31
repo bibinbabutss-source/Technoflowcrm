@@ -30,6 +30,7 @@ urlpatterns = [
     path("daily-reports/", include("performance.report_urls")),
     path("documents/", include("documents.urls")),
     path("owner/", include("owner.urls")),
+    path("meetings/", include("meetings.urls")),
     path("dashboards/", include("reporting.dashboard_urls")),
     path("notifications/", include("notifications.urls")),
     path("", include("reporting.urls")),

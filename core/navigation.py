@@ -18,6 +18,7 @@ NAV_SECTIONS = [
         ("Leads", "funnel", "leads:list", "leads.view", ("/dashboards/leads/",)),
         ("Customer Visits", "calendar-check", "visits:list", "visits.view", ("/dashboards/visits/",)),
         ("Customers", "building", "customers:list", "customers.view", ("/dashboards/customers/",)),
+        ("Company History", "clock-history", "customers:history_picker", "customers.view", ()),
         ("Sales Pipeline", "kanban", "sales:kanban", "pipeline.view", ("/pipeline/forecast/", "/dashboards/pipeline/")),
         ("Opportunities", "lightning-charge", "sales:pipeline", "pipeline.view", ("/dashboards/opportunities/",)),
         ("Projects", "briefcase", "sales:projects", "projects.view", ("/dashboards/projects/",)),

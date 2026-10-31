@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "documents",
     "notifications",
     "owner",
+    "meetings",
 ]
 
 MIDDLEWARE = [

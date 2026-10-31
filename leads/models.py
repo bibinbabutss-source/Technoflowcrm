@@ -115,7 +115,8 @@ class Lead(TimeStampedModel):
 
     @property
     def is_converted(self):
-        return self.customer_id is not None
+        """Moved to the sales pipeline. A lead has its customer from the start; that alone is not a conversion."""
+        return self.converted_at is not None
 
     @property
     def is_follow_up_overdue(self):

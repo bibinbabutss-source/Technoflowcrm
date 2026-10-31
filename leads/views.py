@@ -68,6 +68,7 @@ class LeadList(CrmListView):
         Column("Est. value", "estimated_value", money=True),
         Column("Responsible", "assigned_engineer"),
         Column("Created by", "created_by"),
+        Column("Meetings", "meeting_count", align="end"),
         Column("Next follow-up", render=follow_up_cell, text=lambda lead: lead.next_follow_up),
         Column("Created", "created_at", date=True),
     ]
@@ -80,7 +81,9 @@ class LeadList(CrmListView):
     default_sort = "newest"
 
     def base_queryset(self):
-        return Lead.objects.select_related("stage", "source", "assigned_engineer", "created_by")
+        from meetings.services import annotate_lead_meetings
+
+        return annotate_lead_meetings(Lead.objects.select_related("stage", "source", "assigned_engineer", "created_by"))
 
     def get_filters(self):
         today = timezone.localdate()
@@ -96,7 +99,7 @@ class LeadList(CrmListView):
             BoolFilter("overdue", "Follow-up overdue",
                        Q(next_follow_up__lt=today, stage__is_won=False, stage__is_lost=False)),
             BoolFilter("unassigned", "Unassigned", Q(assigned_engineer__isnull=True)),
-            BoolFilter("converted", "Converted", Q(customer__isnull=False)),
+            BoolFilter("converted", "In sales pipeline", Q(converted_at__isnull=False)),
             DateRangeFilter("created", "Created", "created_at"),
         ]
 
@@ -145,6 +148,8 @@ class LeadCreate(CrmCreateView):
     def form_valid(self, form):
         form.instance.stage = LeadStage.first_open()
         response = super().form_valid(form)
+        if form.created_customer:
+            activity.record(form.created_customer, "created", f"Customer added with lead {self.object.code}")
         activity.record(self.object, "created", "Lead registered")
         record_assignment(self.object, note="Initial assignment")
         return response
@@ -170,6 +175,8 @@ class LeadUpdate(CrmUpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        if form.created_customer:
+            activity.record(form.created_customer, "created", f"Customer added with lead {self.object.code}")
         record_assignment(self.object, previous_engineer=self._prev[0], previous_coordinator=self._prev[1])
         if self._prev_category != self.object.category:
             old = dict(Lead.Category.choices).get(self._prev_category, "not set")
@@ -199,7 +206,16 @@ def lead_detail(request, pk):
         and not lead.opportunities.filter(is_archived=False).exists(),
         "stage_form": StageForm(initial={"stage": lead.stage}, user=request.user),
         "change_rows": change_history(lead, skip=("code",)),
+        **_meeting_ctx(request, lead),
     })
+
+
+def _meeting_ctx(request, lead):
+    from meetings import services as meeting_services
+
+    return {"meetings": meeting_services.with_permissions(meeting_services.for_lead(lead), request.user), "meeting_counts": meeting_services.counts(lead=lead),
+            "kind": "lead", "meeting_parent": lead, "today": timezone.localdate(),
+            "can_add_meeting": has_capability(request.user, "leads.edit") and not lead.is_archived}
 
 
 def _can_change(request, lead):
@@ -250,11 +266,12 @@ def lead_move(request, pk):
 def lead_convert(request, pk):
     lead = get_scoped_or_404(Lead, request.user, pk, OWNER_FIELDS)
     if lead.is_converted:
-        messages.info(request, "This lead is already converted.")
+        messages.info(request, "This lead is already in the sales pipeline.")
         return redirect(lead.get_absolute_url())
     if lead.stage.is_lost or lead.is_archived:
-        raise PermissionDenied("Lost or archived leads cannot be converted.")
-    duplicates = find_duplicates(company_name=lead.company_name, email=lead.email, phone=lead.phone)
+        raise PermissionDenied("Lost or archived leads cannot be moved to the sales pipeline.")
+    duplicates = [] if lead.customer_id else find_duplicates(company_name=lead.company_name, email=lead.email,
+                                                             phone=lead.phone)
     initial = {"company_name": lead.company_name, "contact_person": lead.contact_person, "email": lead.email,
                "phone": lead.phone, "city": lead.city, "opp_title": lead.title, "opp_value": lead.estimated_value,
                "opp_probability": 25, "create_opportunity": True}
@@ -279,8 +296,9 @@ def lead_convert(request, pk):
         except ValidationError as exc:
             form.add_error(None, exc.messages)
         else:
-            messages.success(request, f"Lead converted: customer {customer.code}" +
-                             (f", opportunity {opportunity.code}." if opportunity else "."))
+            messages.success(request, f"{lead.code} moved to the sales pipeline: customer {customer.code}" +
+                             (f", opportunity {opportunity.code}. Record meetings and quotations here."
+                              if opportunity else "."))
             return redirect(opportunity.get_absolute_url() if opportunity else customer.get_absolute_url())
     return render(request, "leads/convert.html", {"lead": lead, "form": form, "duplicates": duplicates})
 

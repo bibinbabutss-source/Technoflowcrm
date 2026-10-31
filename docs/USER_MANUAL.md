@@ -14,6 +14,7 @@ button described here is missing, your role does not have that permission — as
 7. [Good habits](#7-good-habits)
 8. [Employee Performance and Daily Reports](#8-employee-performance-and-daily-reports)
 9. [Lead categories, uploaded quotations and the Owner pages](#9-lead-categories-uploaded-quotations-and-the-owner-pages)
+10. [Meetings and company history](#10-meetings-and-company-history)
 
 ---
 
@@ -53,19 +54,25 @@ button described here is missing, your role does not have that permission — as
 ## 4. The sales workflow, step by step
 
 ```text
-Lead → (qualify) → Convert → Customer + Opportunity → Quotation → Submit → Approval
+Customer → Lead → Meetings → Move to Sales Pipeline → Opportunity (meetings, quotations, follow-ups)
+     → Quotation → Submit → Approval
      → Sent → Accepted → Sales order → Milestones → Confirm → Invoices → Payments → Statement
 ```
 
-1. **Record the enquiry as a lead** — Leads → **New lead**. Title, company, contact, source, estimated value.
-   The CRM warns if a similar lead or customer already exists.
-2. **Work the lead** — move it through the stages (Leads → **Kanban**: drag the card, or use its *Move to…*
-   list). Log calls and meetings in **Communication History**; plan visits in **Customer Visits**.
-   *Lost* needs a reason.
-3. **Convert** — on the lead page, **Convert**. Link it to an existing customer or create a new one
-   (the CRM shows look-alike customers first), and optionally create a sales **opportunity**.
-4. **Opportunity** — Sales Pipeline. Keep the stage, value, probability and expected closing date current;
-   these drive the forecast.
+1. **Customer first, then the lead** — Leads → **Add lead** (or **Add lead** on a customer page). Step 1 of the
+   form is the customer: choose an **existing customer** (type to search) or choose **New customer** and fill
+   in the company details — the customer is created together with the lead. The CRM warns if a similar lead
+   or customer already exists.
+2. **Record every meeting** — on the lead page, **Add meeting** after each meeting: date, type, who was there,
+   **meeting summary**, **points discussed** (one per line), next action and **next follow-up date**. The
+   lead's follow-up date follows the latest meeting. Plan future meetings as **Customer Visits**.
+   Move the lead through its stages as usual; *Lost* needs a reason.
+3. **Move to Sales Pipeline** — on the lead page. The customer is already known, so you only enter the
+   opportunity (title, value, probability, expected close). Older or imported leads without a customer
+   choose or create the customer on the same page.
+4. **Opportunity** — Sales Pipeline. Keep adding meetings here (**Add meeting**); the meetings panel shows how
+   many were held **before the pipeline** and **in the pipeline**, and the steps bar shows where the deal is.
+   Keep the stage, value, probability and expected closing date current; these drive the forecast.
 5. **Quotation** — on the opportunity, **Create quotation**. Add lines (description, quantity, unit, price,
    discount %, tax rate); totals update as you type. Add terms on the same page. **Save**.
 6. **Submit for approval** — the CRM checks the approval rules (Settings). Within the limits it is approved
@@ -242,4 +249,17 @@ Click any card, bar or point to open the records behind the number.
 - **Pending Approvals** has Approve / Reject with comments.
 - **Team Calendar** shows everyone's visits, meetings, follow-ups, tasks and deadlines.
 - **Modules & Approvals** turns Finance on or off and lets the Sales Director approve as backup.
+
+## 10. Meetings and company history
+
+- **Meetings** live on the lead and, after the move, on the opportunity. Each one keeps the summary, the points
+  discussed, the next action and the next follow-up date. Edit with the pencil; the creator or a manager can
+  delete one (the deletion is kept in the Audit Log). Lists of leads and opportunities show a **Meetings**
+  column, and the Team Calendar and Employee Performance count meetings held.
+- Once a lead has meetings or is in the pipeline, its customer can no longer be changed.
+- **View as a company** — on the Dashboard type a company name (or open **Company History** in the menu, or
+  **Company history** on a customer page). The page shows, for that customer: number of leads, meetings
+  before / in the pipeline, visits, opportunities open / won / lost, won value and **meetings per won deal**;
+  each sales journey (lead → meetings → moved to the pipeline → opportunity → quotations); every meeting;
+  and the full timeline. Everyone sees only the records their role allows.
 

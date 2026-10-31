@@ -1,14 +1,19 @@
 {% extends "base.html" %}{% load crm %}
-{% block title %}Convert {{ lead.code }}{% endblock %}
+{% block title %}Move {{ lead.code }} to the sales pipeline{% endblock %}
 {% block content %}
-<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'leads:list' %}">Leads</a></li><li class="breadcrumb-item"><a href="{{ lead.get_absolute_url }}">{{ lead.code }}</a></li><li class="breadcrumb-item active">Convert</li></ol></nav>
-<div class="tf-page-head"><div><h1>Convert lead</h1><p>{{ lead.title }} · {{ lead.company_name }}. The customer and the opportunity are created together, or not at all.</p></div></div>
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'leads:list' %}">Leads</a></li><li class="breadcrumb-item"><a href="{{ lead.get_absolute_url }}">{{ lead.code }}</a></li><li class="breadcrumb-item active">Move to Sales Pipeline</li></ol></nav>
+<div class="tf-page-head"><div><h1>Move to Sales Pipeline</h1><p>{{ lead.title }} · {{ lead.company_name }}. The lead becomes a sales opportunity; meetings, quotations and follow-ups then continue on the opportunity.</p></div></div>
 <form method="post" novalidate>{% csrf_token %}
   {% include "partials/form_errors.html" %}
   {% if duplicates %}<div class="alert alert-warning"><strong>Similar existing customers</strong> — link the lead to one of them instead of creating a duplicate:
     <ul class="mb-0 mt-1">{% for d in duplicates %}<li><a href="{{ d.customer.get_absolute_url }}" target="_blank" rel="noopener">{{ d.customer }}</a> — {{ d.reasons|join:", " }}</li>{% endfor %}</ul></div>{% endif %}
   <div class="row g-3">
-    <div class="col-lg-6"><div class="card h-100"><div class="card-header">1. Customer</div><div class="card-body">
+    {% if form.fixed_customer %}<div class="col-lg-6"><div class="card h-100"><div class="card-header">1. Customer</div><div class="card-body">
+      <p class="mb-1"><a class="fw-semibold" href="{{ form.fixed_customer.get_absolute_url }}">{{ form.fixed_customer }}</a></p>
+      <p class="small text-secondary mb-2">{{ form.fixed_customer.contact_person|default:"" }}{% if form.fixed_customer.phone %} · {{ form.fixed_customer.phone }}{% endif %}{% if form.fixed_customer.city %} · {{ form.fixed_customer.city }}{% endif %}</p>
+      <p class="small mb-0">Meetings recorded on this lead so far: <strong>{{ lead.meetings.count }}</strong>. They stay in the history and count as meetings before the pipeline.</p>
+    </div></div></div>
+    {% else %}    <div class="col-lg-6"><div class="card h-100"><div class="card-header">1. Customer</div><div class="card-body">
       <div class="mb-3">{% for radio in form.mode %}<div class="form-check">{{ radio.tag }}<label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>{% endfor %}{{ form.mode.errors }}</div>
       <fieldset class="border rounded p-3 mb-3"><legend class="fs-6 float-none w-auto px-1 mb-0">Existing customer</legend>
         {% with field=form.existing_customer %}{% include "partials/field.html" %}{% endwith %}</fieldset>
@@ -22,9 +27,10 @@
         {% if duplicates %}{% with field=form.confirm_new %}{% include "partials/field.html" %}{% endwith %}{% endif %}
       </fieldset>
     </div></div></div>
+    {% endif %}
     <div class="col-lg-6"><div class="card h-100"><div class="card-header">2. Sales opportunity</div><div class="card-body">
-      {% if form.create_opportunity %}
-        {% with field=form.create_opportunity %}{% include "partials/field.html" %}{% endwith %}
+      {% if form.opp_title %}
+        {% if form.create_opportunity %}{% with field=form.create_opportunity %}{% include "partials/field.html" %}{% endwith %}{% endif %}
         {% with field=form.opp_title %}{% include "partials/field.html" %}{% endwith %}
         {% with field=form.opp_value %}{% include "partials/field.html" %}{% endwith %}
         {% with field=form.opp_close %}{% include "partials/field.html" %}{% endwith %}
@@ -33,6 +39,6 @@
       {% else %}<p class="text-secondary">Your role does not create opportunities. A Sales Engineer or Director can add one from the customer page.</p>{% endif %}
     </div></div></div>
   </div>
-  <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit">Convert lead</button><a class="btn btn-outline-secondary" href="{{ lead.get_absolute_url }}">Cancel</a></div>
+  <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit"><i class="bi bi-arrow-right-circle me-1"></i>Move to Sales Pipeline</button><a class="btn btn-outline-secondary" href="{{ lead.get_absolute_url }}">Cancel</a></div>
 </form>
 {% endblock %}

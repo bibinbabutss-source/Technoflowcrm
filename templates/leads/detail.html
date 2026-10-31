@@ -5,11 +5,12 @@
 <div class="tf-page-head">
   <div><h1>{{ lead.title }}
     <span class="badge-status {% if lead.stage.is_won %}badge-active{% elif lead.stage.is_lost %}badge-danger{% else %}badge-info{% endif %} align-middle ms-1">{{ lead.stage }}</span>
-    {% if lead.is_converted %}<span class="badge-status badge-active align-middle">Converted</span>{% endif %}
+    {% if lead.is_converted %}<span class="badge-status badge-active align-middle">In sales pipeline</span>{% endif %}
     {% if lead.is_archived %}<span class="badge-status badge-inactive align-middle">Archived</span>{% endif %}</h1>
     <p>{% if lead.category %}<span class="badge-status {{ lead.category_tone|tone_class }}"><i class="bi bi-tag"></i> {{ lead.get_category_display }}</span>{% else %}<span class="badge-status badge-inactive">Category not set</span>{% endif %} · {{ lead.code }} · {{ lead.company_name }}</p></div>
   <div class="tf-actions">
-    {% if can_convert %}<a class="btn btn-primary" href="{% url 'leads:convert' lead.pk %}"><i class="bi bi-arrow-right-circle me-1"></i>Convert to customer / opportunity</a>{% endif %}
+    {% if can_add_meeting and lead.customer_id %}<a class="btn btn-primary" href="{% url 'meetings:add' 'lead' lead.pk %}"><i class="bi bi-people me-1"></i>Add meeting</a>{% endif %}
+    {% if can_convert %}<a class="btn btn-primary" href="{% url 'leads:convert' lead.pk %}"><i class="bi bi-arrow-right-circle me-1"></i>Move to Sales Pipeline</a>{% endif %}
     {% if can_create_opportunity %}<a class="btn btn-primary" href="{% url 'sales:opportunity_create' %}?lead={{ lead.pk }}&amp;customer={{ lead.customer_id }}"><i class="bi bi-lightning me-1"></i>Create opportunity</a>{% endif %}
     {% if can_edit %}<a class="btn btn-outline-primary" href="{% url 'leads:edit' lead.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
       <a class="btn btn-outline-secondary" href="{% url 'leads:stage' lead.pk %}"><i class="bi bi-signpost me-1"></i>Change stage</a>{% endif %}
@@ -39,7 +40,7 @@
         <dt class="col-5">Last contact</dt><dd class="col-7">{{ lead.last_contact_date|date:"d-M-Y"|default:"—" }}</dd>
         <dt class="col-5">Next follow-up</dt><dd class="col-7">{% if lead.is_follow_up_overdue %}<span class="badge-status badge-danger">{{ lead.next_follow_up|date:"d-M-Y" }} overdue</span>{% else %}{{ lead.next_follow_up|date:"d-M-Y"|default:"—" }}{% endif %}</dd>
         {% if lead.stage.is_lost %}<dt class="col-5">Lost reason</dt><dd class="col-7">{{ lead.lost_reason }}{% if lead.lost_notes %} — {{ lead.lost_notes }}{% endif %}</dd>{% endif %}
-        {% if lead.is_converted %}<dt class="col-5">Customer</dt><dd class="col-7"><a href="{{ lead.customer.get_absolute_url }}">{{ lead.customer }}</a><br><span class="text-secondary">converted {{ lead.converted_at|date:"d-M-Y" }}</span></dd>{% endif %}
+        <dt class="col-5">Customer</dt><dd class="col-7">{% if lead.customer %}<a href="{{ lead.customer.get_absolute_url }}">{{ lead.customer }}</a> · <a href="{% url 'customers:history' lead.customer_id %}">company history</a>{% else %}<span class="text-secondary">Not linked yet — edit the lead to choose or add the customer</span>{% endif %}{% if lead.is_converted %}<br><span class="text-secondary">moved to the sales pipeline {{ lead.converted_at|date:"d-M-Y" }}</span>{% endif %}</dd>
       </dl>
       {% if lead.qualification_notes %}<hr><div class="small"><div class="text-secondary mb-1">Qualification notes</div>{{ lead.qualification_notes|linebreaksbr }}</div>{% endif %}
     </div></div>
@@ -48,6 +49,7 @@
     {% include "documents/_panel.html" with target=lead %}
   </div>
   <div class="col-lg-7">
+    {% include "meetings/_panel.html" %}
     <div class="card mb-3"><div class="card-header">Stage history</div>
       {% if history %}<div class="table-responsive"><table class="table table-sm"><thead><tr><th>When</th><th>From</th><th>To</th><th>By</th><th>Comment</th></tr></thead>
       <tbody>{% for h in history %}<tr><td class="text-nowrap">{{ h.changed_at|date:"d-M-Y H:i" }}</td><td>{{ h.from_stage|default:"—" }}</td><td>{{ h.to_stage }}</td><td>{{ h.changed_by|person }}</td><td>{{ h.note }}</td></tr>{% endfor %}</tbody></table></div>

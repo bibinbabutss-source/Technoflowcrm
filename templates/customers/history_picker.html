@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}View as a company{% endblock %}
+{% block content %}
+<div class="tf-page-head"><div><h1>View as a company</h1><p>Open the full sales history of one customer: leads, meetings, visits, opportunities and quotations in one place.</p></div></div>
+<form class="card card-body mb-3" method="get" role="search" data-no-spinner>
+  <label class="form-label" for="company-q">Company name, customer ID or contact</label>
+  <div class="input-group"><input class="form-control" id="company-q" name="q" value="{{ q }}" placeholder="Type part of the company name" autofocus>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>Find</button></div>
+</form>
+<div class="card"><div class="card-header">{% if q %}Companies matching “{{ q }}”{% else %}Recently updated companies{% endif %}</div>
+  {% if results %}<div class="list-group list-group-flush">{% for c in results %}
+    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{% url 'customers:history' c.pk %}">
+      <span><strong>{{ c.company_name }}</strong> <span class="text-secondary small">{{ c.code }}{% if c.city %} · {{ c.city }}{% endif %}</span></span>
+      <span class="badge-status badge-info">{{ c.get_status_display }}</span></a>{% endfor %}</div>
+  {% else %}<div class="tf-empty py-4">No company found. Check the spelling or search by customer ID.</div>{% endif %}
+</div>
+{% endblock %}

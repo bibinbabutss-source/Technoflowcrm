@@ -1,0 +1,5 @@
+{% extends "crud/form.html" %}
+{% block form_top %}
+<div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i>Record what was discussed in a meeting that took place. The next follow-up date you enter becomes the {% if kind == "opportunity" %}opportunity's{% else %}lead's{% endif %} follow-up reminder.</div>
+{% endblock %}
+{% block form_bottom %}<input type="hidden" name="_parent" value="{{ parent.pk }}">{% endblock %}

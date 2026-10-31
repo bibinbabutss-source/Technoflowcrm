@@ -8,16 +8,33 @@ from customers.forms import setup_assignment
 from customers.models import OWNER_FIELDS as CUSTOMER_OWNERS
 from customers.models import Customer
 
+from django.db import transaction
+from django.db.models import Q
+
+from customers.services import find_duplicates as find_customer_duplicates
+
 from .models import Lead, LeadStage
 from .services import find_lead_duplicates
 
 
 class LeadForm(CrmFormMixin, forms.ModelForm):
+    """
+    Every lead belongs to a customer: the user picks an existing customer or adds a new one here,
+    using the company and contact details below. The customer is created together with the lead.
+    """
+    CUSTOMER_MODES = [("existing", "Existing customer"), ("new", "New customer (use the company details below)")]
+    customer_mode = forms.ChoiceField(choices=CUSTOMER_MODES, widget=forms.RadioSelect, initial="existing",
+                                      label="Customer")
+    confirm_new_customer = forms.BooleanField(
+        required=False, label="This is a different company — create a new customer anyway",
+        help_text="Tick only after checking the similar customers listed above.")
     confirm_duplicates = forms.BooleanField(
         required=False, label="This is a different enquiry — save anyway",
         help_text="Tick only after checking the similar open leads listed above.")
+    prefill_fields = ("customer",)
 
     fieldsets = [
+        ("1. Customer", ["customer_mode", "customer", "confirm_new_customer"]),
         ("Lead", ["category", "title", "interest", "estimated_value", "priority", "source"]),
         ("Company and contact", ["company_name", "contact_person", "designation", "email", "phone", "city"]),
         ("Assignment and follow-up", ["assigned_engineer", "assigned_coordinator", "last_contact_date",
@@ -27,15 +44,17 @@ class LeadForm(CrmFormMixin, forms.ModelForm):
 
     class Meta:
         model = Lead
-        fields = ["category", "title", "interest", "estimated_value", "priority", "source", "company_name", "contact_person",
-                  "designation", "email", "phone", "city", "assigned_engineer", "assigned_coordinator",
-                  "last_contact_date", "next_follow_up", "qualification_notes"]
+        fields = ["customer", "category", "title", "interest", "estimated_value", "priority", "source", "company_name",
+                  "contact_person", "designation", "email", "phone", "city", "assigned_engineer",
+                  "assigned_coordinator", "last_contact_date", "next_follow_up", "qualification_notes"]
 
         widgets = {"category": PillRadioSelect(attrs={"class": "tf-category-choice"})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.duplicates = []
+        self.customer_duplicates = []
+        self.created_customer = None
         restrict_lookups(self, {"source": "lead_source"})
         setup_assignment(self, capability="leads.assign")
         cat = self.fields["category"]
@@ -49,6 +68,44 @@ class LeadForm(CrmFormMixin, forms.ModelForm):
             self.fields["assigned_engineer"].label = "Responsible employee (owner)"
             if self.fields["assigned_engineer"].required is False and has_capability(self.user, "leads.assign"):
                 self.fields["assigned_engineer"].required = True
+        self._setup_customer()
+
+    # ---- customer first
+    @property
+    def customer_locked(self):
+        """Once the lead is in the sales pipeline or has meetings, its customer can no longer change."""
+        lead = self.instance
+        if not (lead.pk and lead.customer_id):
+            return False
+        return bool(lead.converted_at or lead.meetings.exists() or lead.opportunities.exists())
+
+    def _setup_customer(self):
+        field = self.fields["customer"]
+        qs = scope_queryset(Customer.objects.filter(is_archived=False), self.user, CUSTOMER_OWNERS)
+        if self.instance.customer_id:
+            qs = Customer.objects.filter(Q(pk__in=qs.values("pk")) | Q(pk=self.instance.customer_id))
+        field.queryset = qs.order_by("company_name")
+        field.required = False
+        field.label = "Existing customer"
+        field.empty_label = "Choose the customer…"
+        field.help_text = "Type to search. Not in the list? Choose 'New customer' above."
+        self.fields["company_name"].required = False
+        self.fields["company_name"].help_text = "Filled from the customer when you choose an existing one."
+        if self.customer_locked:
+            field.disabled = True
+            field.help_text = "The customer cannot change once the lead has meetings or is in the sales pipeline."
+            del self.fields["customer_mode"]
+            del self.fields["confirm_new_customer"]
+            return
+        if self.instance.pk and not self.instance.customer_id:
+            self.fields["customer_mode"].initial = "new"
+        if not self.is_bound and self.initial.get("customer"):
+            self.fields["customer_mode"].initial = "existing"
+
+    def clean_customer(self):
+        if self.customer_locked:
+            return self.instance.customer
+        return self.cleaned_data.get("customer")
 
     def clean_estimated_value(self):
         value = self.cleaned_data.get("estimated_value")
@@ -65,13 +122,57 @@ class LeadForm(CrmFormMixin, forms.ModelForm):
                 data["assigned_engineer"] = self.instance.assigned_engineer
             else:
                 data["assigned_engineer"] = self.user
-        if not self.instance.pk or {"company_name", "email", "phone"} & set(self.changed_data):
+        self._clean_customer(data)
+        if self.errors:
+            return data
+        if not self.instance.pk or {"company_name", "email", "phone", "customer"} & set(self.changed_data):
             self.duplicates = find_lead_duplicates(company_name=data.get("company_name"), email=data.get("email"),
                                                    phone=data.get("phone"), exclude_pk=self.instance.pk)
         if self.duplicates and not data.get("confirm_duplicates"):
             raise forms.ValidationError("Similar open leads already exist. Check the list below; if this is a "
                                         "different enquiry, tick 'save anyway'.")
         return data
+
+    def _clean_customer(self, data):
+        mode = "existing" if self.customer_locked else data.get("customer_mode") or "existing"
+        if mode == "existing":
+            customer = data.get("customer")
+            if not customer:
+                self.add_error("customer", "Choose the customer, or choose 'New customer' and enter the company "
+                                           "details.")
+                return
+            # the lead carries the customer's company name; empty contact details are taken from the customer
+            data["company_name"] = customer.company_name
+            for name in ("contact_person", "designation", "email", "phone", "city"):
+                if not data.get(name) and getattr(customer, name, ""):
+                    data[name] = getattr(customer, name)
+            return
+        data["customer"] = None
+        name = (data.get("company_name") or "").strip()
+        if not name:
+            self.add_error("company_name", "Enter the company name of the new customer.")
+            return
+        data["company_name"] = name
+        self.customer_duplicates = find_customer_duplicates(company_name=name, email=data.get("email"),
+                                                            phone=data.get("phone"))
+        if self.customer_duplicates and not data.get("confirm_new_customer"):
+            self.add_error(None, "Similar customers already exist. Choose one of them as the existing customer, "
+                                 "or tick the box to confirm this is a different company.")
+
+    def save(self, commit=True):
+        with transaction.atomic():
+            if not self.cleaned_data.get("customer") and not self.customer_locked:
+                d = self.cleaned_data
+                customer = Customer(company_name=d["company_name"], contact_person=d.get("contact_person") or "",
+                                    designation=d.get("designation") or "", email=d.get("email") or "",
+                                    phone=d.get("phone") or "", city=d.get("city") or "", source=d.get("source"),
+                                    assigned_engineer=d.get("assigned_engineer"),
+                                    assigned_coordinator=d.get("assigned_coordinator"),
+                                    status=Customer.Status.PROSPECT)
+                customer.save()
+                self.created_customer = customer
+                self.instance.customer = customer
+            return super().save(commit=commit)
 
 
 class StageForm(CrmFormMixin, forms.Form):
@@ -114,18 +215,32 @@ class ConvertForm(CrmFormMixin, forms.Form):
         super().__init__(*args, **kwargs)
         self.lead = lead
         self.duplicates = list(duplicates)
+        self.fixed_customer = lead.customer if lead is not None and lead.customer_id else None
+        if not has_capability(self.user, "pipeline.edit"):
+            for f in ("create_opportunity", "opp_title", "opp_value", "opp_close", "opp_probability"):
+                del self.fields[f]
+        if self.fixed_customer:
+            # customer-first leads already have their customer: only the opportunity is asked for
+            for f in ("mode", "existing_customer", "company_name", "category", "contact_person", "email", "phone",
+                      "city", "confirm_new"):
+                del self.fields[f]
+            if "create_opportunity" in self.fields:
+                del self.fields["create_opportunity"]
+                self.fields["opp_title"].required = True
+            return
         self.fields["existing_customer"].queryset = scope_queryset(
             Customer.objects.filter(is_archived=False), self.user, CUSTOMER_OWNERS).order_by("company_name")
         if self.duplicates:
             self.fields["mode"].initial = "existing"
             self.fields["existing_customer"].initial = self.duplicates[0]["customer"].pk
-        if not has_capability(self.user, "pipeline.edit"):
-            for f in ("create_opportunity", "opp_title", "opp_value", "opp_close", "opp_probability"):
-                del self.fields[f]
 
     def clean(self):
         data = super().clean()
-        if data.get("mode") == "existing":
+        if self.fixed_customer:
+            data["mode"] = "existing"
+            data["existing_customer"] = self.fixed_customer
+            data["create_opportunity"] = "opp_title" in self.fields
+        elif data.get("mode") == "existing":
             if not data.get("existing_customer"):
                 self.add_error("existing_customer", "Choose the customer.")
         else:

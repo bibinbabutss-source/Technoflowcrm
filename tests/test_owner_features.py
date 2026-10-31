@@ -48,7 +48,7 @@ def org(make_user, login):
 
 def lead_post(**extra):
     data = {"category": "tender", "title": "Pump package", "company_name": "New Prospect LLC", "priority": "medium",
-            "estimated_value": ""}
+            "estimated_value": "", "customer_mode": "new"}
     data.update(extra)
     return data
 
@@ -78,8 +78,8 @@ def test_responsible_employee_required_for_assigners_and_category_history(org):
     assert r.status_code == 302
     lead = Lead.objects.get()
     # another authorised user (not the creator) changes the category: allowed, and the history keeps it
-    r = org["c1"].post(reverse("leads:edit", args=[lead.pk]), lead_post(category="job_in_hand",
-                                                                       assigned_engineer=org["e1"].pk))
+    r = org["c1"].post(reverse("leads:edit", args=[lead.pk]), lead_post(
+        category="job_in_hand", assigned_engineer=org["e1"].pk, customer_mode="existing", customer=lead.customer_id))
     assert r.status_code == 302
     lead.refresh_from_db()
     assert lead.category == "job_in_hand" and lead.created_by == org["director"]
@@ -161,7 +161,8 @@ def test_stage_names_and_menu(org):
         assert name in names
     nav = org["o"].get(reverse("sales:pipeline")).context["crm_nav"]
     sales = [i["label"] for s in nav if s["title"] == "Sales" for i in s["items"]]
-    assert sales == ["Dashboard", "Leads", "Customer Visits", "Customers", "Sales Pipeline", "Opportunities",
+    assert sales == ["Dashboard", "Leads", "Customer Visits", "Customers", "Company History", "Sales Pipeline",
+                     "Opportunities",
                      "Projects", "Quotations"]
     active = [i["label"] for s in nav for i in s["items"] if i["active"]]
     assert active == ["Opportunities"]

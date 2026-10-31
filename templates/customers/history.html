@@ -1,0 +1,67 @@
+{% extends "base.html" %}{% load crm %}
+{% block title %}{{ customer.company_name }} · history{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'customers:history_picker' %}">View as a company</a></li><li class="breadcrumb-item"><a href="{{ customer.get_absolute_url }}">{{ customer.code }}</a></li><li class="breadcrumb-item active">History</li></ol></nav>
+<div class="tf-page-head">
+  <div><h1>{{ customer.company_name }} <span class="badge-status badge-info align-middle">{{ customer.get_status_display }}</span></h1>
+    <p>{{ customer.code }} · sales history since {{ summary.first_contact|date:"d-M-Y" }}{% if customer.contact_person %} · {{ customer.contact_person }}{% endif %}</p></div>
+  <div class="tf-actions">
+    <a class="btn btn-outline-primary" href="{{ customer.get_absolute_url }}"><i class="bi bi-building me-1"></i>Customer page</a>
+    {% if "leads.create" in crm_caps and not customer.is_archived %}<a class="btn btn-outline-secondary" href="{% url 'leads:create' %}?customer={{ customer.pk }}"><i class="bi bi-funnel me-1"></i>Add lead</a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-3" id="history-summary">
+  {% if summary.leads is not None %}<div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Leads</div><div class="value">{{ summary.leads }}</div><div class="sub small text-secondary">{{ summary.leads_in_pipeline }} moved to the pipeline</div></div></div>{% endif %}
+  {% if summary.meetings is not None %}<div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Meetings</div><div class="value" data-meetings-total>{{ summary.meetings }}</div><div class="sub small text-secondary">{{ summary.meetings_before }} before pipeline · {{ summary.meetings_in_pipeline }} in pipeline</div></div></div>{% endif %}
+  {% if summary.opportunities is not None %}<div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Opportunities</div><div class="value">{{ summary.opportunities }}</div><div class="sub small text-secondary">{{ summary.opps_open }} open · {{ summary.opps_won }} won · {{ summary.opps_lost }} lost</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Won value</div><div class="value fs-5">{{ summary.won_value|money }}</div><div class="sub small text-secondary">{% if summary.meetings_per_win is not None %}{{ summary.meetings_per_win }} meetings per won deal{% else %}No deal won yet{% endif %}</div></div></div>{% endif %}
+  {% if summary.visits is not None %}<div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Visits</div><div class="value">{{ summary.visits }}</div><div class="sub small text-secondary">{{ summary.visits_done }} completed</div></div></div>{% endif %}
+  {% if summary.quotations is not None %}<div class="col-6 col-lg-3"><div class="card tf-stat"><div class="label">Quotations</div><div class="value">{{ summary.quotations }}</div><div class="sub small text-secondary">{{ summary.revisions }} versions in total</div></div></div>{% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card mb-3" id="journeys"><div class="card-header"><i class="bi bi-signpost-split me-1"></i>Sales journeys <span class="text-secondary small">— each lead and where it went</span></div>
+      <div class="card-body">
+      {% for j in journeys %}
+        <div class="tf-journey">
+          {% if j.lead %}
+          <div class="d-flex flex-wrap justify-content-between gap-2">
+            <div><span class="badge-status {{ j.lead.category_tone|tone_class }}">{{ j.lead.get_category_display|default:"Lead" }}</span>
+              <a class="fw-semibold" href="{{ j.lead.get_absolute_url }}">{{ j.lead.code }} {{ j.lead.title }}</a></div>
+            <div class="small text-secondary">opened {{ j.lead.created_at|date:"d-M-Y" }} · {{ j.lead.assigned_engineer|person }} · {{ j.lead.stage }}</div>
+          </div>
+          <ol class="tf-journey-steps small">
+            <li><b>Lead added</b> {{ j.lead.created_at|date:"d-M-Y" }}</li>
+            <li><b>{{ j.meetings_before|length }} meeting{{ j.meetings_before|length|pluralize }} before the pipeline</b>{% for m in j.meetings_before %}<br><a href="{{ m.get_absolute_url }}">{{ m.meeting_date|date:"d-M-Y" }}</a> — {{ m.summary|truncatechars:90 }}{% endfor %}</li>
+            {% if j.lead.converted_at %}<li class="done"><b>Moved to the sales pipeline</b> {{ j.lead.converted_at|date:"d-M-Y" }}</li>{% else %}<li class="todo"><b>Not in the sales pipeline yet</b></li>{% endif %}
+          </ol>
+          {% else %}<div class="small text-secondary mb-1">Opportunity opened directly (no lead)</div>{% endif %}
+          {% for e in j.opportunities %}
+          <div class="tf-journey-opp">
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+              <a class="fw-semibold" href="{{ e.opp.get_absolute_url }}">{{ e.opp.code }} {{ e.opp.title }}</a>
+              <span class="badge-status {% if e.opp.stage.is_won %}badge-active{% elif e.opp.stage.is_lost %}badge-danger{% else %}badge-info{% endif %}">{{ e.opp.stage }} · {{ e.opp.estimated_value|money }}</span>
+            </div>
+            <div class="small text-secondary">{{ e.meetings_total }} meeting{{ e.meetings_total|pluralize }} in total ({{ e.meetings_before }} before the pipeline) · {{ e.quotations|length }} quotation{{ e.quotations|length|pluralize }}{% if e.opp.next_follow_up and e.opp.is_open %} · next follow-up {{ e.opp.next_follow_up|date:"d-M-Y" }}{% endif %}</div>
+            {% if e.meetings %}<ul class="small mb-1 mt-1">{% for m in e.meetings %}<li><a href="{{ m.get_absolute_url }}">{{ m.meeting_date|date:"d-M-Y" }}</a> — {{ m.summary|truncatechars:100 }}</li>{% endfor %}</ul>{% endif %}
+            {% if e.quotations %}<div class="small">{% for q in e.quotations %}<a href="{{ q.get_absolute_url }}">{{ q.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+          </div>
+          {% empty %}{% if j.lead.converted_at %}<div class="small text-secondary">No opportunity you can see.</div>{% endif %}
+          {% endfor %}
+        </div>
+      {% empty %}<div class="tf-empty py-3">No leads or opportunities for this company yet.</div>{% endfor %}
+      </div></div>
+
+    {% if meetings is not None %}<div class="card mb-3" id="all-meetings"><div class="card-header"><i class="bi bi-people me-1"></i>All meetings ({{ meetings|length }})</div>
+      {% if meetings %}<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Date</th><th>Stage</th><th>Held by</th><th>Summary</th><th>Next follow-up</th></tr></thead><tbody>
+      {% for m in meetings %}<tr><td class="text-nowrap"><a href="{{ m.get_absolute_url }}">{{ m.meeting_date|date:"d-M-Y" }}</a></td><td class="small">{{ m.stage_label }}</td><td>{{ m.held_by|person }}</td><td class="small">{{ m.summary|truncatechars:120 }}{% if m.points %}<ul class="mb-0">{% for p in m.points|slice:":3" %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}</td><td class="text-nowrap">{{ m.next_follow_up|date:"d-M-Y"|default:"—" }}</td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<div class="tf-empty py-3">No meetings recorded yet.</div>{% endif %}</div>{% endif %}
+  </div>
+  <div class="col-xl-5">
+    {% if visits %}<div class="card mb-3"><div class="card-header"><i class="bi bi-geo-alt me-1"></i>Visits</div><ul class="list-group list-group-flush">{% for v in visits|slice:":15" %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ v.get_absolute_url }}">{{ v.code }} {{ v.visit_date|date:"d-M-Y" }}</a><span>{{ v.assigned_to|person }} · {{ v.get_status_display }}</span></li>{% endfor %}</ul></div>{% endif %}
+    <div class="card mb-3" id="timeline"><div class="card-header"><i class="bi bi-clock-history me-1"></i>Full timeline</div><div class="card-body">{% include "partials/timeline.html" with show_object=True %}</div></div>
+  </div>
+</div>
+{% endblock %}
